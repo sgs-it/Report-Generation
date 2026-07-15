@@ -1647,7 +1647,7 @@
                   <option>April</option>
                   <option>May</option>
                   <option>June</option>
-                  <option>July</option>
+                  <option selected>July</option>
                   <option>August</option>
                   <option>September</option>
                   <option>October</option>
@@ -3847,6 +3847,8 @@
       if (d.location) document.getElementById('location').value = d.location;
       if (d.contractNo) document.getElementById('contractNo').value = d.contractNo;
       if (d.serviceProvided) document.getElementById('serviceProvided').value = d.serviceProvided;
+      // User requested: If we upload a report to extract do not change this value.
+      /*
       if (d.reportMonth) {
         const sel = document.getElementById('reportMonth');
         for (let i = 0; i < sel.options.length; i++) {
@@ -3856,6 +3858,7 @@
           }
         }
       }
+      */
       if (d.reportYear) document.getElementById('reportYear').value = d.reportYear;
 
       // Annual Plan
