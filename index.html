@@ -2437,8 +2437,8 @@
                onchange="state.photoLocations[${locIdx}].heading=this.value;debouncedRefresh()">
         ${state.photoLocations.length > 1 ? `<button class="remove-location" onclick="removePhotoLocation(${locIdx})">✕ Remove</button>` : ''}
       </div>
-      <div class="photo-upload-zone" id="photoZone_${locIdx}" onclick="document.getElementById('photoInput_${locIdx}').click()">
-        <input type="file" id="photoInput_${locIdx}" accept="image/png, image/jpeg, image/jpg, image/*" multiple="multiple">
+      <div class="photo-upload-zone" id="photoZone_${locIdx}" onclick="if(event.target.id !== 'photoInput_${locIdx}') document.getElementById('photoInput_${locIdx}').click()">
+        <input type="file" id="photoInput_${locIdx}" accept="image/*" multiple="multiple" style="display:none;">
         <div class="icon">📸</div>
         <p>Click or drag & drop photos here<br><span style="font-size:10px;color:var(--text-muted)">Supports bulk upload • JPG, PNG</span></p>
       </div>
