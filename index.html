@@ -2238,18 +2238,18 @@
 
       const ppmBody = document.getElementById('ppmBody');
       ppmBody.innerHTML = '';
-      
+
       document.querySelectorAll('#annualBody tr').forEach(tr => {
         const inputs = tr.querySelectorAll('input[type="text"]');
         const checks = tr.querySelectorAll('input[type="checkbox"]');
         const name = inputs[0]?.value.trim();
         const freq = inputs[1]?.value.trim();
-        
+
         if (checks[monthIndex] && checks[monthIndex].checked) {
           const saved = currentPpm[name] || {};
-          const isDone = saved.done !== undefined ? saved.done : true; 
+          const isDone = saved.done !== undefined ? saved.done : true;
           const isPending = saved.pending !== undefined ? saved.pending : false;
-          
+
           const newTr = document.createElement('tr');
           newTr.innerHTML = `
     <td><input type="text" value="${name}" onchange="debouncedRefresh()"></td>
