@@ -3361,12 +3361,11 @@
       body { font-family: 'Cambria', Georgia, serif; font-size: 8pt; color: #000; margin: 0; padding: 0; background: #fff; }
       
       .report-page {
-        background: #fff; width: 100%; padding: 0;
+        background: #fff; padding: 0;
         margin: 0; color: #000; font-family: 'Cambria', Georgia, serif; font-size: 8pt;
-        box-sizing: border-box;
       }
       
-      .print-table { width: 100%; border-collapse: collapse; height: 100%; }
+      .print-table { width: 100%; border-collapse: collapse; }
       .print-table td { border: none; padding: 0; }
       
       .report-title-bar {
@@ -3422,11 +3421,11 @@
       <div class="Section1">
         ${pagesHTML}
         <p class="MsoNormal">&nbsp;</p>
-        <p class="MsoNormal">&nbsp;</p>
         
-        <!-- Header and Footer (Automatically extracted by Word due to mso-element) -->
-        ${getHeaderHTML()}
-        ${getFooterHTML()}
+        <div style="display:none;">
+          ${getHeaderHTML()}
+          ${getFooterHTML()}
+        </div>
       </div>
     </body>
     </html>
