@@ -4435,13 +4435,36 @@
           const src = img.getAttribute('src');
           if (src && src.startsWith('data:')) {
             let caption = '';
-            const nextEl = img.nextElementSibling || img.parentElement?.nextElementSibling;
-            if (nextEl) {
-              const nextText = nextEl.textContent?.trim();
-              if (nextText && nextText.length < 100 && !/^\d+$/.test(nextText)) {
-                caption = nextText;
+            
+            // Check if image is in a table cell (our export format)
+            const td = img.closest('td');
+            if (td) {
+              const tr = td.parentElement;
+              if (tr && tr.nextElementSibling) {
+                const colIndex = Array.from(tr.children).indexOf(td);
+                if (colIndex !== -1) {
+                  const captionCell = tr.nextElementSibling.children[colIndex];
+                  if (captionCell) {
+                    const cellText = captionCell.textContent?.trim();
+                    if (cellText && cellText.length < 150) {
+                      caption = cellText;
+                    }
+                  }
+                }
               }
             }
+            
+            // Fallback for linear layouts
+            if (!caption) {
+              const nextEl = img.nextElementSibling || img.parentElement?.nextElementSibling;
+              if (nextEl && nextEl.tagName !== 'TR') {
+                const nextText = nextEl.textContent?.trim();
+                if (nextText && nextText.length < 150 && !/^\d+$/.test(nextText)) {
+                  caption = nextText;
+                }
+              }
+            }
+            
             data.photos.push({ dataUrl: src, caption });
           }
         });
