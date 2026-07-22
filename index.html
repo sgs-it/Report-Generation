@@ -3422,8 +3422,6 @@
     <body>
       <div class="Section1">
         ${pagesHTML}
-        <p class="MsoNormal">&nbsp;</p>
-        <p class="MsoNormal">&nbsp;</p>
       </div>
 
       <table id="hrdftrtbl">
@@ -3781,33 +3779,15 @@
 
       try {
         let extracted;
-        
-        // Peek at the first 100 bytes to check if it's actually an MHTML/HTML file (like our exports)
-        const headerBuffer = await file.slice(0, 100).arrayBuffer();
-        const headerText = new TextDecoder().decode(headerBuffer);
-        const isMhtml = headerText.includes('MIME-Version:') || headerText.includes('<html');
-
         if (isPDF) {
           document.getElementById('uploadProgressText').textContent = 'Parsing PDF with PDF.js...';
           extracted = await parsePDFFile(file);
-        } else if (isMhtml) {
-          document.getElementById('uploadProgressText').textContent = 'Parsing HTML/MHTML document...';
-          const text = await file.text();
-          let htmlContent = text;
-          const htmlMatch = text.match(/<html[\s\S]*?<\/html>/i);
-          if (htmlMatch) {
-            htmlContent = htmlMatch[0];
-          }
-          const tempDiv = document.createElement('div');
-          tempDiv.innerHTML = htmlContent;
-          const rawText = tempDiv.innerText || tempDiv.textContent || '';
-          extracted = extractSectionsFromHTML(htmlContent, rawText);
         } else {
           document.getElementById('uploadProgressText').textContent = 'Parsing Word document...';
           extracted = await parseDocxFile(file);
         }
 
-        extracted._fileType = isPDF ? 'PDF' : (isMhtml ? 'Word (.doc/HTML)' : 'Word (.docx)');
+        extracted._fileType = isPDF ? 'PDF' : 'Word (.docx)';
         extracted._fileName = file.name;
         extracted._fileSize = (file.size / 1024).toFixed(1) + ' KB';
         pendingExtractedData = extracted;
