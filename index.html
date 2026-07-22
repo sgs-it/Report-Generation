@@ -3421,11 +3421,17 @@
       <div class="Section1">
         ${pagesHTML}
         <p class="MsoNormal">&nbsp;</p>
-      </div>
-
-      <div style="display:none;">
-        ${getHeaderHTML()}
-        ${getFooterHTML()}
+        
+        <table id="hrdftrtbl" border="0" cellspacing="0" cellpadding="0" style="display:none; mso-hide:all;">
+          <tr>
+            <td>
+              ${getHeaderHTML()}
+            </td>
+            <td>
+              ${getFooterHTML()}
+            </td>
+          </tr>
+        </table>
       </div>
     </body>
     </html>
