@@ -3345,10 +3345,11 @@
         <w:View>Print</w:View>
         <w:Zoom>100</w:Zoom>
         <w:DoNotOptimizeForBrowser/>
+        <w:CompatibilityMode/>
       </w:WordDocument>
     </xml>
     <style>
-      @page Section1 {
+      @page {
         size: 210mm 297mm;
         margin: 20mm 12mm 20mm 12mm;
         mso-header-margin: 10mm;
@@ -3356,18 +3357,20 @@
         mso-header: h1;
         mso-footer: f1;
       }
-      div.Section1 { page: Section1; }
-      table#hrdftrtbl { margin: 0in 0in 0in 900in; width: 1px; height: 1px; overflow: hidden; }
 
-      body { font-family: 'Cambria', Georgia, serif; font-size: 8pt; color: #000; margin: 0; padding: 0; background: #fff; }
+      body {
+        font-family: 'Cambria', Georgia, serif;
+        font-size: 8pt; color: #000;
+        margin: 0; padding: 0; background: #fff;
+        mso-margin-top-alt: auto; mso-margin-bottom-alt: auto;
+      }
       
       .report-page {
         background: #fff; width: 100%; padding: 0;
         margin: 0; color: #000; font-family: 'Cambria', Georgia, serif; font-size: 8pt;
-        box-sizing: border-box;
       }
       
-      .print-table { width: 100%; border-collapse: collapse; height: 100%; }
+      .print-table { width: 100%; border-collapse: collapse; }
       .print-table td { border: none; padding: 0; }
       
       .report-title-bar {
@@ -3420,11 +3423,10 @@
     </style>
     </head>
     <body>
-      <div class="Section1">
-        ${pagesHTML}
-      </div>
+      ${pagesHTML}
+      <p style="margin:0;font-size:1pt;mso-line-height-alt:0;">&nbsp;</p>
 
-      <table id="hrdftrtbl">
+      <table id="hrdftrtbl" style="margin:0in 0in 0in 900in;width:1px;height:1px;overflow:hidden;">
         <tr>
           <td>
             ${getHeaderHTML()}
