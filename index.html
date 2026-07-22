@@ -3353,8 +3353,8 @@
         margin: 20mm 12mm 20mm 12mm;
         mso-header-margin: 10mm;
         mso-footer-margin: 10mm;
-        mso-header: h1;
-        mso-footer: f1;
+        mso-header: url("#h1");
+        mso-footer: url("#f1");
       }
       div.Section1 { page: Section1; }
 
@@ -3421,18 +3421,10 @@
       <div class="Section1">
         ${pagesHTML}
         <p class="MsoNormal">&nbsp;</p>
-        
-        <table id="hrdftrtbl" border="0" cellspacing="0" cellpadding="0" style="display:none; mso-hide:all;">
-          <tr>
-            <td>
-              ${getHeaderHTML()}
-            </td>
-            <td>
-              ${getFooterHTML()}
-            </td>
-          </tr>
-        </table>
       </div>
+
+      ${getHeaderHTML()}
+      ${getFooterHTML()}
     </body>
     </html>
   `;
