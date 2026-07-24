@@ -2090,10 +2090,8 @@
       'Replacement of Groundcovers (Wedelia)',
       'Replacement of Seasonal Flowers (Petunia)',
       'Replacement of Seasonal Flowers (Vinca)',
-      'SELECTIVE PRUNING',
       'Selective Pruning',
       'Soil Cultivation',
-      'SPRINKLING OF WATER',
       'Sprinkling of Water',
       'Tree Pruning',
       'Trimming Activity',
@@ -3314,9 +3312,9 @@
               for (let c2 = 0; c2 < cols; c2++) {
                 if (rowPhotos[c2]) {
                   const imgLoc = photoLocationMap.get(rowPhotos[c2].id);
-                  photoContent += `<td style="width:${cellWidthMm}mm; height:${photoRowHeight}mm; border:1px solid #000000; padding:0; text-align:center; vertical-align:middle; overflow:hidden;"><img src="${imgLoc}" width="${imgWidthPx}" height="${imgHeightPx}" style="display:block; margin:0 auto;" alt=""></td>`;
+                  photoContent += `<td class="photo-cell" style="width:${cellWidthMm}mm; height:${photoRowHeight}mm; border:1px solid #000000; padding:0; margin:0; text-align:center; vertical-align:middle; overflow:hidden;"><img src="${imgLoc}" style="width:100%; height:100%; display:block; object-fit:cover; margin:0; padding:0;" alt=""></td>`;
                 } else {
-                  photoContent += `<td style="width:${cellWidthMm}mm; height:${photoRowHeight}mm; border:1px solid #000000; padding:0; text-align:center; vertical-align:middle; overflow:hidden;"></td>`;
+                  photoContent += `<td class="photo-cell" style="width:${cellWidthMm}mm; height:${photoRowHeight}mm; border:1px solid #000000; padding:0; margin:0; text-align:center; vertical-align:middle; overflow:hidden;"></td>`;
                 }
               }
               photoContent += '</tr><tr>';
@@ -3417,7 +3415,9 @@
       .osh-list li { margin-bottom: 2px; }
       
       .photo-grid-table { width: 100%; border-collapse: collapse; margin-bottom: 0; table-layout: fixed; }
-      .photo-grid-table td { border: 1px solid #000000; padding: 0; text-align: center; vertical-align: middle; }
+      .photo-grid-table td { border: 1px solid #000000; padding: 0; margin: 0; text-align: center; vertical-align: middle; }
+      .photo-grid-table td.photo-cell { padding: 0; margin: 0; overflow: hidden; }
+      .photo-grid-table .photo-cell img { width: 100%; height: 100%; display: block; object-fit: cover; margin: 0; padding: 0; }
       
       .signature-table { width: 50%; border-collapse: collapse; margin-top: 10px; font-size: 8pt; }
       .signature-table td { border: 1px solid #000000; padding: 3px 6px; }
@@ -4457,7 +4457,7 @@
           const src = img.getAttribute('src');
           if (src && src.startsWith('data:')) {
             let caption = '';
-            
+
             // Check if image is in a table cell (our export format)
             const td = img.closest('td');
             if (td) {
@@ -4475,7 +4475,7 @@
                 }
               }
             }
-            
+
             // Fallback for linear layouts
             if (!caption) {
               const nextEl = img.nextElementSibling || img.parentElement?.nextElementSibling;
@@ -4486,7 +4486,7 @@
                 }
               }
             }
-            
+
             data.photos.push({ dataUrl: src, caption });
           }
         });
