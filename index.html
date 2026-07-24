@@ -2058,6 +2058,8 @@
       'Green Shade Net Service for Plants',
       'Installation of Terram Sheet',
       'Irrigation Maintenance Check',
+      'Lawn Edging',
+      'Lawn Mowing',
       'Manual Watering',
       'Manual Watering After Planting',
       'Mulching',
@@ -2086,7 +2088,9 @@
       'Replacement of Groundcovers (Wedelia)',
       'Replacement of Seasonal Flowers (Petunia)',
       'Replacement of Seasonal Flowers (Vinca)',
+      'Selective Pruning',
       'Soil Cultivation',
+      'Sprinkling of Water',
       'Tree Pruning',
       'Trimming Activity',
       'Trimming and Shaping',
@@ -3353,8 +3357,8 @@
         margin: 20mm 12mm 20mm 12mm;
         mso-header-margin: 10mm;
         mso-footer-margin: 10mm;
-        mso-header: h1;
-        mso-footer: f1;
+        mso-header: url("file:///C:/report_images/header.html") h1;
+        mso-footer: url("file:///C:/report_images/header.html") f1;
       }
       div.Section1 { page: Section1; }
 
@@ -3415,19 +3419,12 @@
       .signature-table td { border: 1px solid #000000; padding: 3px 6px; }
       .signature-table .sig-label { background: #f2f2f2; width: 140px; }
       .signature-table .sig-value { color: #0000ff; }
-      table#hrdftrtbl { display:none !important; }
     </style>
     </head>
     <body>
       <div class="Section1">
         ${pagesHTML}
         <p class="MsoNormal">&nbsp;</p>
-        <table id="hrdftrtbl" border="0" cellspacing="0" cellpadding="0">
-          <tr>
-            <td>${getHeaderHTML()}</td>
-            <td>${getFooterHTML()}</td>
-          </tr>
-        </table>
       </div>
     </body>
     </html>
@@ -3435,6 +3432,7 @@
 
       // Build MHTML body with proper Content-Location headers
       const htmlLocation = "file:///C:/report_images/report.html";
+      const headerLocation = "file:///C:/report_images/header.html";
       let mhtml = "MIME-Version: 1.0\r\n";
       mhtml += `Content-Type: multipart/related; boundary="${boundary}"\r\n\r\n`;
 
@@ -3444,6 +3442,24 @@
       mhtml += "Content-Type: text/html; charset=\"utf-8\"\r\n";
       mhtml += "Content-Transfer-Encoding: 8bit\r\n\r\n";
       mhtml += wordHTML + "\r\n\r\n";
+
+      // Separate Header & Footer MIME Part
+      const headerHTMLPart = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office"
+          xmlns:w="urn:schemas-microsoft-com:office:word"
+          xmlns="http://www.w3.org/TR/REC-html40">
+    <head><meta charset="utf-8"></head>
+    <body>
+      ${getHeaderHTML()}
+      ${getFooterHTML()}
+    </body>
+    </html>
+  `;
+      mhtml += `--${boundary}\r\n`;
+      mhtml += `Content-Location: ${headerLocation}\r\n`;
+      mhtml += "Content-Type: text/html; charset=\"utf-8\"\r\n";
+      mhtml += "Content-Transfer-Encoding: 8bit\r\n\r\n";
+      mhtml += headerHTMLPart + "\r\n\r\n";
 
       // Attachments with Content-Location + line-wrapped base64
       attachments.forEach(att => {
