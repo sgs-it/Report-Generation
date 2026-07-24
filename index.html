@@ -3034,83 +3034,20 @@
       });
     }
 
-    // Helper: crop & fit photo base64 to exact grid cell aspect ratio for Word export
-    function cropPhotoToAspect(dataUrl, targetWidthPx, targetHeightPx) {
-      return new Promise((resolve) => {
-        if (!dataUrl) return resolve(dataUrl);
-        const img = new Image();
-        img.onload = () => {
-          try {
-            const canvas = document.createElement('canvas');
-            canvas.width = targetWidthPx;
-            canvas.height = targetHeightPx;
-            const ctx = canvas.getContext('2d');
-
-            const targetAspect = targetWidthPx / targetHeightPx;
-            const imgAspect = img.width / img.height;
-
-            let renderWidth, renderHeight, offsetX, offsetY;
-            if (imgAspect > targetAspect) {
-              renderHeight = img.height;
-              renderWidth = img.height * targetAspect;
-              offsetX = (img.width - renderWidth) / 2;
-              offsetY = 0;
-            } else {
-              renderWidth = img.width;
-              renderHeight = img.width / targetAspect;
-              offsetX = 0;
-              offsetY = (img.height - renderHeight) / 2;
-            }
-
-            ctx.drawImage(
-              img,
-              offsetX, offsetY, renderWidth, renderHeight,
-              0, 0, targetWidthPx, targetHeightPx
-            );
-            resolve(canvas.toDataURL('image/jpeg', 0.92));
-          } catch (e) {
-            resolve(dataUrl);
-          }
-        };
-        img.onerror = () => resolve(dataUrl);
-        img.src = dataUrl;
-      });
-    }
-
     async function exportWord() {
       showToast('📄 Generating Word document...');
       const data = gatherData();
 
-      // Calculate layout parameters first for correct page numbering and photo cell aspect ratios
-      let cols, rowsPerPage;
-      if (data.gridLayout === '3x3') { cols = 3; rowsPerPage = 3; }
-      else if (data.gridLayout === 'custom') {
-        cols = parseInt(document.getElementById('customCols').value) || 4;
-        rowsPerPage = parseInt(document.getElementById('customRows').value) || 3;
-        cols = Math.max(1, Math.min(6, cols));
-        rowsPerPage = Math.max(1, Math.min(8, rowsPerPage));
-      } else { cols = 4; rowsPerPage = 3; }
-
-      const availableHeight = 220;
-      const headingHeight = 8;
-      const captionRowHeight = 6;
-      const usableHeight = availableHeight - headingHeight - (rowsPerPage * captionRowHeight);
-      const photoRowHeight = Math.floor(usableHeight / rowsPerPage);
-
-      const targetWidthPx = Math.floor((180 / cols) * 3.78 * 2);
-      const targetHeightPx = Math.floor(photoRowHeight * 3.78 * 2);
-
-      // Resolve all photo dataUrls to base64 asynchronously and crop to exact grid cell aspect ratio
+      // Resolve all photo dataUrls to base64 asynchronously
       try {
         const resolvedPhotos = [];
         for (const loc of data.photoLocations) {
           const resolvedLocPhotos = [];
           for (const photo of loc.photos) {
             const base64DataUrl = await getPhotoBase64(photo);
-            const fittedDataUrl = await cropPhotoToAspect(base64DataUrl, targetWidthPx, targetHeightPx);
             resolvedLocPhotos.push({
               ...photo,
-              resolvedDataUrl: fittedDataUrl
+              resolvedDataUrl: base64DataUrl
             });
           }
           resolvedPhotos.push({
