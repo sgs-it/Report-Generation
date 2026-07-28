@@ -2677,10 +2677,14 @@
 
       for (let i = 0; i < photos.length; i += BATCH_SIZE) {
         const batch = photos.slice(i, i + BATCH_SIZE);
-        try {
-          const parts = [
-            {
-              text: `You are an expert landscaping and property maintenance AI classifier.
+        let retryCount = 0;
+        let batchSuccess = false;
+
+        while (!batchSuccess && retryCount < 3) {
+          try {
+            const parts = [
+              {
+                text: `You are an expert landscaping and property maintenance AI classifier.
 Analyze each of the following ${batch.length} images carefully in order.
 For EACH image, select the single most accurate matching caption from this EXACT list of predefined captions:
 
@@ -2689,86 +2693,107 @@ ${JSON.stringify(validCaptions)}
 Return ONLY a valid JSON array of strings containing EXACTLY ${batch.length} items, matching the order of images.
 Example output format:
 ["Lawn Mowing", "Selective Pruning", "Manual Watering"]`
-            }
-          ];
-
-          for (let b = 0; b < batch.length; b++) {
-            const dataUrl = await getPhotoBase64(batch[b]);
-            const commaIdx = dataUrl.indexOf(',');
-            const base64Data = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
-            parts.push({
-              inline_data: {
-                mime_type: "image/jpeg",
-                data: base64Data
               }
-            });
-          }
+            ];
 
-          const candidateModels = [
-            activeModel.name,
-            'gemini-1.5-flash',
-            'gemini-1.5-flash-latest',
-            'gemini-1.5-flash-001',
-            'gemini-1.5-flash-002',
-            'gemini-2.0-flash-exp',
-            'gemini-1.5-pro'
-          ];
+            for (let b = 0; b < batch.length; b++) {
+              const dataUrl = await getPhotoBase64(batch[b]);
+              const commaIdx = dataUrl.indexOf(',');
+              const base64Data = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+              parts.push({
+                inline_data: {
+                  mime_type: "image/jpeg",
+                  data: base64Data
+                }
+              });
+            }
 
-          let response = null;
-          let lastErr = null;
+            const candidateModels = [
+              activeModel.name,
+              'gemini-1.5-flash',
+              'gemini-1.5-flash-latest',
+              'gemini-1.5-flash-001',
+              'gemini-1.5-flash-002',
+              'gemini-2.0-flash-exp',
+              'gemini-1.5-pro'
+            ];
 
-          for (const ver of [activeModel.version, 'v1beta', 'v1']) {
-            for (const modelName of candidateModels) {
-              const url = `https://generativelanguage.googleapis.com/${ver}/models/${modelName}:generateContent?key=${apiKey}`;
-              try {
-                const res = await fetch(url, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ contents: [{ parts }] })
-                });
-                if (res.ok) {
-                  response = res;
-                  break;
-                } else {
-                  const errJson = await res.json().catch(() => ({}));
-                  lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
-                  // If rate limit (429), bad request (400), or forbidden (403), do not fallback, throw immediately
-                  if (res.status === 429 || res.status === 400 || res.status === 403) {
-                    throw lastErr;
+            let response = null;
+            let lastErr = null;
+
+            for (const ver of [activeModel.version, 'v1beta', 'v1']) {
+              for (const modelName of candidateModels) {
+                const url = `https://generativelanguage.googleapis.com/${ver}/models/${modelName}:generateContent?key=${apiKey}`;
+                try {
+                  const res = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ contents: [{ parts }] })
+                  });
+                  if (res.ok) {
+                    response = res;
+                    break;
+                  } else {
+                    const errJson = await res.json().catch(() => ({}));
+                    lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
+                    // If rate limit (429), bad request (400), or forbidden (403), do not fallback, throw immediately
+                    if (res.status === 429 || res.status === 400 || res.status === 403) {
+                      throw lastErr;
+                    }
+                  }
+                } catch (fetchErr) {
+                  lastErr = fetchErr;
+                  // If it was explicitly thrown above, bubble it out to break outer loops
+                  if (fetchErr.message && !fetchErr.message.includes("fetch")) {
+                     throw fetchErr;
                   }
                 }
-              } catch (fetchErr) {
-                lastErr = fetchErr;
-                // If it was explicitly thrown above, bubble it out to break outer loops
-                if (fetchErr.message && !fetchErr.message.includes("fetch")) {
-                   throw fetchErr;
-                }
               }
+              if (response) break;
             }
-            if (response) break;
-          }
 
-          if (!response) {
-            throw lastErr || new Error("Failed to connect to Gemini API");
-          }
+            if (!response) {
+              throw lastErr || new Error("Failed to connect to Gemini API");
+            }
 
-          const resData = await response.json();
-          const textOut = resData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            const resData = await response.json();
+            const textOut = resData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-          const jsonMatch = textOut.match(/\[[\s\S]*\]/);
-          if (jsonMatch) {
-            const parsedArray = JSON.parse(jsonMatch[0]);
-            parsedArray.forEach((cap, idx) => {
-              if (batch[idx] && typeof cap === 'string') {
-                const matched = PREDEFINED_CAPTIONS.find(c => c.toLowerCase() === cap.toLowerCase()) || cap;
-                batch[idx].caption = matched;
-                successCount++;
+            const jsonMatch = textOut.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+              const parsedArray = JSON.parse(jsonMatch[0]);
+              parsedArray.forEach((cap, idx) => {
+                if (batch[idx] && typeof cap === 'string') {
+                  const matched = PREDEFINED_CAPTIONS.find(c => c.toLowerCase() === cap.toLowerCase()) || cap;
+                  batch[idx].caption = matched;
+                  successCount++;
+                }
+              });
+            }
+            
+            batchSuccess = true;
+          } catch (err) {
+            console.error("Gemini Auto-Caption Error:", err);
+            const errMsg = (err.message || "").toLowerCase();
+            
+            if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('rate limit')) {
+              retryCount++;
+              if (retryCount >= 3) {
+                showToast(`⚠️ AI Error: Google API limit reached too many times. Stopping.`);
+                return; // stop the whole process
               }
-            });
+              showToast(`⏳ Google limit reached. Auto-retrying in 15 seconds...`);
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            } else {
+              showToast(`⚠️ AI Error: ${err.message}`);
+              return; // abort on critical errors (like 403 Invalid API key)
+            }
           }
-        } catch (err) {
-          console.error("Gemini Auto-Caption Error:", err);
-          showToast(`⚠️ AI Error: ${err.message}`);
+        }
+        
+        // Wait 4 seconds between successful batches to respect 15 requests/minute free tier limit
+        if (batchSuccess && i + BATCH_SIZE < photos.length) {
+          await new Promise(resolve => setTimeout(resolve, 4000));
         }
       }
 
