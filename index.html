@@ -2756,14 +2756,13 @@ Example output format:
                     "Authorization": `Bearer ${apiKey}`
                   },
                   body: JSON.stringify({
-                    model: "nvidia/nemotron-nano-12b-v2-vl:free",
+                    model: "openrouter/free",
                     messages: [
                       {
                         role: "user",
                         content: openRouterContent
                       }
-                    ],
-                    fallbacks: ["openrouter/free"]
+                    ]
                   })
                 });
                 
