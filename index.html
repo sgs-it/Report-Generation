@@ -2633,9 +2633,15 @@
             const models = (data.models || []).filter(m =>
               m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
             );
-            // Prioritize flash models, then any model
+            // Prioritize standard 1.5-flash for the highest free tier limits (1500 per day)
+            const standardFlash = models.find(m => m.name === 'models/gemini-1.5-flash' || m.name === 'models/gemini-1.5-flash-latest');
+            if (standardFlash) return { version: ver, name: standardFlash.name.replace('models/', '') };
+            
+            // Fallback to any other flash model (like experimental)
             const flash = models.find(m => m.name.includes('flash'));
             if (flash) return { version: ver, name: flash.name.replace('models/', '') };
+            
+            // Fallback to any supported model
             if (models.length > 0) return { version: ver, name: models[0].name.replace('models/', '') };
           }
         } catch (e) {
