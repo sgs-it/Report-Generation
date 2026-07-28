@@ -2635,11 +2635,12 @@
             const models = (data.models || []).filter(m =>
               m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
             );
-            // Prioritize standard 1.5-flash for the highest free tier limits (1500 per day)
-            const standardFlash = models.find(m => m.name === 'models/gemini-1.5-flash' || m.name === 'models/gemini-1.5-flash-latest');
+            
+            // Prioritize standard 2.5-flash (2026 default)
+            const standardFlash = models.find(m => m.name === 'models/gemini-2.5-flash' || m.name === 'models/gemini-2.0-flash');
             if (standardFlash) return { version: ver, name: standardFlash.name.replace('models/', '') };
             
-            // Fallback to any other flash model (like experimental)
+            // Fallback to any other flash model
             const flash = models.find(m => m.name.includes('flash'));
             if (flash) return { version: ver, name: flash.name.replace('models/', '') };
             
@@ -2650,7 +2651,8 @@
           console.warn(`Error querying Gemini models (${ver}):`, e);
         }
       }
-      return { version: 'v1beta', name: 'gemini-1.5-flash' };
+      // 2026 Fallback if models API is rate limited
+      return { version: 'v1beta', name: 'gemini-2.5-flash' };
     }
 
     // ===== CLOUD API AI AUTO-CAPTIONING (RATE-LIMIT SAFE QUEUE) =====
@@ -2746,9 +2748,9 @@
               // Direct Google AI Studio Logic
               const candidateModels = [
                 activeModel.name,
-                'gemini-1.5-flash',
-                'gemini-1.5-flash-latest',
-                'gemini-1.5-pro'
+                'gemini-2.5-flash',
+                'gemini-2.5-pro',
+                'gemini-2.0-flash'
               ];
               
               for (const ver of [activeModel.version, 'v1beta', 'v1']) {
@@ -2775,7 +2777,8 @@
                     } else {
                       const errJson = await res.json().catch(() => ({}));
                       lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
-                      if (res.status === 429 || res.status === 400 || res.status === 403) throw lastErr;
+                      // Abort immediately on Quota/Rate Limit (429), Bad Request (400), Forbidden (403), or Not Found (404)
+                      if (res.status === 429 || res.status === 400 || res.status === 403 || res.status === 404) throw lastErr;
                     }
                   } catch (fetchErr) {
                     lastErr = fetchErr;
