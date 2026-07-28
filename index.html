@@ -1867,6 +1867,24 @@
           </div>
           <div class="section-body">
             <input type="text" class="section-title-input" id="photosTitle" value="PHOTOGRAPHS">
+
+            <!-- AI Auto-Captioning Control Panel -->
+            <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(236, 72, 153, 0.08)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                <div style="font-weight: 600; font-size: 13px; color: #a855f7; display: flex; align-items: center; gap: 6px;">
+                  <span>✨ AI Auto-Captioning</span>
+                  <span style="font-size: 10px; background: #8b5cf6; color: #ffffff; padding: 2px 6px; border-radius: 10px; font-weight: normal;">Gemini 1.5 Flash (100% Free)</span>
+                </div>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size: 11px; color: #ec4899; text-decoration: underline; font-weight: 500;">🔑 Get Free Gemini Key</a>
+              </div>
+              <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
+                <input type="password" id="geminiApiKey" placeholder="Paste Gemini API Key (e.g. AIzaSy...)" style="flex: 1; min-width: 200px; padding: 7px 10px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);" onchange="localStorage.setItem('gemini_api_key', this.value.trim())">
+                <button class="btn" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); color: white; padding: 7px 14px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600; box-shadow: 0 2px 10px rgba(139,92,246,0.3);" onclick="autoCaptionAllPhotos()">
+                  <span>✨ Auto-Caption All Photos</span>
+                </button>
+              </div>
+            </div>
+
             <label
               style="font-size:11px;font-weight:500;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Grid
               Layout</label>
@@ -2151,6 +2169,11 @@
       renderPhotoLocations();
       setupDragDrop();
       setupInputListeners();
+      const savedKey = localStorage.getItem('gemini_api_key');
+      if (savedKey) {
+        const inputEl = document.getElementById('geminiApiKey');
+        if (inputEl) inputEl.value = savedKey;
+      }
       refreshPreview();
     });
 
@@ -2443,6 +2466,7 @@
         <span class="loc-number">${locIdx + 1}</span>
         <input type="text" placeholder="Location heading (e.g. Main Entrance Garden)" value="${loc.heading}"
                onchange="state.photoLocations[${locIdx}].heading=this.value;debouncedRefresh()">
+        <button class="btn btn-sm" style="background:rgba(139,92,246,0.15); color:#a855f7; border:1px solid rgba(139,92,246,0.4); margin-left:auto; font-size:11px; padding:3px 10px; border-radius:4px; cursor:pointer; font-weight:600;" onclick="autoCaptionLocationPhotos(${locIdx})">✨ AI Caption</button>
         ${state.photoLocations.length > 1 ? `<button class="remove-location" onclick="removePhotoLocation(${locIdx})">✕ Remove</button>` : ''}
       </div>
       <div class="photo-upload-zone" id="photoZone_${locIdx}">
@@ -2596,6 +2620,109 @@
       }
       state.photoLocations[locIdx].photos = state.photoLocations[locIdx].photos.filter(p => p.id !== id);
       renderLocationPhotoGrid(locIdx); debouncedRefresh();
+    }
+
+    // ===== GEMINI 1.5 FLASH AI AUTO-CAPTIONING =====
+    async function autoCaptionPhotosList(photos) {
+      if (!photos || photos.length === 0) {
+        showToast('⚠️ No photos available to caption.');
+        return;
+      }
+
+      const inputEl = document.getElementById('geminiApiKey');
+      let apiKey = inputEl ? inputEl.value.trim() : '';
+      if (!apiKey) {
+        apiKey = localStorage.getItem('gemini_api_key') || '';
+      }
+
+      if (!apiKey) {
+        showToast('⚠️ Please paste your free Gemini API Key first!');
+        if (inputEl) inputEl.focus();
+        return;
+      }
+      localStorage.setItem('gemini_api_key', apiKey);
+
+      const validCaptions = PREDEFINED_CAPTIONS.filter(c => c && c.trim() !== '');
+
+      // Group into batches of 5 photos per request for fast processing and staying within free rate limits
+      const BATCH_SIZE = 5;
+      let successCount = 0;
+      showToast(`✨ AI is analyzing ${photos.length} photos with Gemini 1.5 Flash...`);
+
+      for (let i = 0; i < photos.length; i += BATCH_SIZE) {
+        const batch = photos.slice(i, i + BATCH_SIZE);
+        try {
+          const parts = [
+            {
+              text: `You are an expert landscaping and property maintenance AI classifier.
+Analyze each of the following ${batch.length} images carefully in order.
+For EACH image, select the single most accurate matching caption from this EXACT list of predefined captions:
+
+${JSON.stringify(validCaptions)}
+
+Return ONLY a valid JSON array of strings containing EXACTLY ${batch.length} items, matching the order of images.
+Example output format:
+["Lawn Mowing", "Selective Pruning", "Manual Watering"]`
+            }
+          ];
+
+          for (let b = 0; b < batch.length; b++) {
+            const dataUrl = await getPhotoBase64(batch[b]);
+            const commaIdx = dataUrl.indexOf(',');
+            const base64Data = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+            parts.push({
+              inline_data: {
+                mime_type: "image/jpeg",
+                data: base64Data
+              }
+            });
+          }
+
+          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+          const response = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ contents: [{ parts }] })
+          });
+
+          if (!response.ok) {
+            const errJson = await response.json().catch(() => ({}));
+            throw new Error(errJson?.error?.message || `HTTP ${response.status}`);
+          }
+
+          const resData = await response.json();
+          const textOut = resData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+          const jsonMatch = textOut.match(/\[[\s\S]*\]/);
+          if (jsonMatch) {
+            const parsedArray = JSON.parse(jsonMatch[0]);
+            parsedArray.forEach((cap, idx) => {
+              if (batch[idx] && typeof cap === 'string') {
+                const matched = PREDEFINED_CAPTIONS.find(c => c.toLowerCase() === cap.toLowerCase()) || cap;
+                batch[idx].caption = matched;
+                successCount++;
+              }
+            });
+          }
+        } catch (err) {
+          console.error("Gemini Auto-Caption Error:", err);
+          showToast(`⚠️ AI Error: ${err.message}`);
+        }
+      }
+
+      state.photoLocations.forEach((_, locIdx) => renderLocationPhotoGrid(locIdx));
+      debouncedRefresh();
+      showToast(`✨ Auto-captioned ${successCount} photos!`);
+    }
+
+    async function autoCaptionAllPhotos() {
+      const allPhotos = state.photoLocations.flatMap(loc => loc.photos);
+      await autoCaptionPhotosList(allPhotos);
+    }
+
+    async function autoCaptionLocationPhotos(locIdx) {
+      const locPhotos = state.photoLocations[locIdx]?.photos || [];
+      await autoCaptionPhotosList(locPhotos);
     }
 
     // ===== GRID SELECTOR =====
