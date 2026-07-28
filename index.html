@@ -2724,46 +2724,100 @@ Example output format:
               'gemini-1.5-pro'
             ];
 
+            const isOpenRouter = apiKey.startsWith('sk-or-');
             let response = null;
             let lastErr = null;
+            let textOut = "";
 
-            for (const ver of [activeModel.version, 'v1beta', 'v1']) {
-              for (const modelName of candidateModels) {
-                const url = `https://generativelanguage.googleapis.com/${ver}/models/${modelName}:generateContent?key=${apiKey}`;
-                try {
-                  const res = await fetch(url, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ contents: [{ parts }] })
-                  });
-                  if (res.ok) {
-                    response = res;
-                    break;
-                  } else {
-                    const errJson = await res.json().catch(() => ({}));
-                    lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
-                    // If rate limit (429), bad request (400), or forbidden (403), do not fallback, throw immediately
-                    if (res.status === 429 || res.status === 400 || res.status === 403) {
-                      throw lastErr;
+            if (isOpenRouter) {
+              const url = "https://openrouter.ai/api/v1/chat/completions";
+              const openRouterContent = [
+                {
+                  type: "text",
+                  text: parts[0].text
+                }
+              ];
+              // Add images for OpenRouter format
+              for (let b = 1; b < parts.length; b++) {
+                openRouterContent.push({
+                  type: "image_url",
+                  image_url: { url: "data:image/jpeg;base64," + parts[b].inline_data.data }
+                });
+              }
+              
+              try {
+                // We'll use gemini-2.0-flash-lite-preview-02-05:free or a similar reliable free vision model on OpenRouter
+                const res = await fetch(url, {
+                  method: "POST",
+                  headers: { 
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${apiKey}`
+                  },
+                  body: JSON.stringify({
+                    model: "google/gemini-2.5-flash:free",
+                    messages: [
+                      {
+                        role: "user",
+                        content: openRouterContent
+                      }
+                    ],
+                    fallbacks: ["google/gemini-2.0-flash-lite-preview-02-05:free", "google/gemini-2.0-flash-exp:free", "meta-llama/llama-3.2-11b-vision-instruct:free"]
+                  })
+                });
+                
+                if (res.ok) {
+                   response = res;
+                   const resData = await response.json();
+                   textOut = resData.choices?.[0]?.message?.content || "";
+                } else {
+                   const errJson = await res.json().catch(() => ({}));
+                   lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
+                   throw lastErr;
+                }
+              } catch (fetchErr) {
+                 lastErr = fetchErr;
+                 throw fetchErr;
+              }
+              
+            } else {
+              // Existing direct Google AI Studio logic
+              for (const ver of [activeModel.version, 'v1beta', 'v1']) {
+                for (const modelName of candidateModels) {
+                  const url = `https://generativelanguage.googleapis.com/${ver}/models/${modelName}:generateContent?key=${apiKey}`;
+                  try {
+                    const res = await fetch(url, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ contents: [{ parts }] })
+                    });
+                    if (res.ok) {
+                      response = res;
+                      const resData = await response.json();
+                      textOut = resData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                      break;
+                    } else {
+                      const errJson = await res.json().catch(() => ({}));
+                      lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
+                      // If rate limit (429), bad request (400), or forbidden (403), do not fallback, throw immediately
+                      if (res.status === 429 || res.status === 400 || res.status === 403) {
+                        throw lastErr;
+                      }
+                    }
+                  } catch (fetchErr) {
+                    lastErr = fetchErr;
+                    // If it was explicitly thrown above, bubble it out to break outer loops
+                    if (fetchErr.message && !fetchErr.message.includes("fetch")) {
+                       throw fetchErr;
                     }
                   }
-                } catch (fetchErr) {
-                  lastErr = fetchErr;
-                  // If it was explicitly thrown above, bubble it out to break outer loops
-                  if (fetchErr.message && !fetchErr.message.includes("fetch")) {
-                     throw fetchErr;
-                  }
                 }
+                if (response) break;
               }
-              if (response) break;
-            }
 
-            if (!response) {
-              throw lastErr || new Error("Failed to connect to Gemini API");
+              if (!response) {
+                throw lastErr || new Error("Failed to connect to Gemini API");
+              }
             }
-
-            const resData = await response.json();
-            const textOut = resData.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
             const jsonMatch = textOut.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
