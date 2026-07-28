@@ -1870,20 +1870,15 @@
 
             <!-- AI Auto-Captioning Control Panel -->
             <div style="background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(236, 72, 153, 0.08)); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 8px; padding: 12px; margin-bottom: 12px;">
-              <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
-                <div style="font-weight: 600; font-size: 13px; color: #a855f7; display: flex; align-items: center; gap: 6px;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;">
+                <div style="font-size: 13px; font-weight: 600; color: #e6edf3; display: flex; align-items: center; gap: 6px;">
                   <span>✨ AI Auto-Captioning</span>
-                  <span style="font-size: 10px; background: #8b5cf6; color: #ffffff; padding: 2px 6px; border-radius: 10px; font-weight: normal;">Gemini 1.5 Flash (100% Free)</span>
+                  <span style="font-size: 10px; background: #8b5cf6; color: #ffffff; padding: 2px 6px; border-radius: 10px; font-weight: normal;">Cloud API</span>
                 </div>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" style="font-size: 11px; color: #ec4899; text-decoration: underline; font-weight: 500;">🔑 Get Free Gemini Key</a>
               </div>
               <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; align-items: center;">
-      <div class="api-key-container" style="display: flex; align-items: center; justify-content: center; background: rgba(46, 160, 67, 0.1); border-color: var(--accent); padding: 12px; border-radius: var(--radius); width: 100%;">
-        <span style="font-size: 1.2rem; margin-right: 10px;">⚡</span>
-        <div>
-          <strong style="color: var(--accent-light);">100% Offline AI Enabled</strong>
-          <div style="font-size: 12px; color: var(--text-secondary); margin-top: 4px;">Zero-Shot Vision Model runs entirely on your device. No API keys or rate limits.</div>
-        </div>
-      </div>
+                <input type="password" id="geminiApiKey" placeholder="Paste API Key (e.g. AIzaSy... or sk-or-...)" style="flex: 1; min-width: 200px; padding: 7px 10px; font-size: 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary);" onchange="localStorage.setItem('gemini_api_key', this.value.trim())">
                 <button class="btn" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); color: white; padding: 7px 14px; font-size: 12px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; gap: 4px; font-weight: 600; box-shadow: 0 2px 10px rgba(139,92,246,0.3);" onclick="autoCaptionAllPhotos()">
                   <span>✨ Auto-Caption All Photos</span>
                 </button>
@@ -2627,14 +2622,56 @@
       renderLocationPhotoGrid(locIdx); debouncedRefresh();
     }
 
-    // ===== 100% OFFLINE AI AUTO-CAPTIONING (TRANSFORMERS.JS) =====
-    let offlineClassifier = null; // Cache the model so it doesn't reload on subsequent clicks
+    async function getBestGeminiModel(apiKey) {
+      if (apiKey.startsWith('sk-or-')) {
+        return { version: 'v1', name: 'OpenRouter Free' };
+      }
+      const versions = ['v1beta', 'v1'];
+      for (const ver of versions) {
+        try {
+          const res = await fetch(`https://generativelanguage.googleapis.com/${ver}/models?key=${apiKey}`);
+          if (res.ok) {
+            const data = await res.json();
+            const models = (data.models || []).filter(m =>
+              m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
+            );
+            // Prioritize standard 1.5-flash for the highest free tier limits (1500 per day)
+            const standardFlash = models.find(m => m.name === 'models/gemini-1.5-flash' || m.name === 'models/gemini-1.5-flash-latest');
+            if (standardFlash) return { version: ver, name: standardFlash.name.replace('models/', '') };
+            
+            // Fallback to any other flash model (like experimental)
+            const flash = models.find(m => m.name.includes('flash'));
+            if (flash) return { version: ver, name: flash.name.replace('models/', '') };
+            
+            // Fallback to any supported model
+            if (models.length > 0) return { version: ver, name: models[0].name.replace('models/', '') };
+          }
+        } catch (e) {
+          console.warn(`Error querying Gemini models (${ver}):`, e);
+        }
+      }
+      return { version: 'v1beta', name: 'gemini-1.5-flash' };
+    }
 
+    // ===== CLOUD API AI AUTO-CAPTIONING (RATE-LIMIT SAFE QUEUE) =====
     async function autoCaptionPhotosList(photos) {
       if (!photos || photos.length === 0) {
         showToast('⚠️ No photos available to caption.');
         return;
       }
+
+      const inputEl = document.getElementById('geminiApiKey');
+      let apiKey = inputEl ? inputEl.value.trim() : '';
+      if (!apiKey) {
+        apiKey = localStorage.getItem('gemini_api_key') || '';
+      }
+
+      if (!apiKey) {
+        showToast('⚠️ Please paste your free API Key first!');
+        if (inputEl) inputEl.focus();
+        return;
+      }
+      localStorage.setItem('gemini_api_key', apiKey);
 
       const validCaptions = PREDEFINED_CAPTIONS.filter(c => c && c.trim() !== '');
       if (validCaptions.length === 0) {
@@ -2642,70 +2679,155 @@
         return;
       }
 
+      const activeModel = await getBestGeminiModel(apiKey);
       let successCount = 0;
+      
+      showToast(`✨ Starting Queue: Processing ${photos.length} photos (${activeModel.name})...`);
 
-      try {
-        if (!offlineClassifier) {
-          showToast(`⚡ Initializing Offline AI Model... (First time download may take a minute)`);
-          // Dynamically import Transformers.js
-          const { pipeline, env } = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
-          
-          // Force download from CDN and cache in browser
-          env.allowLocalModels = false;
-          env.useBrowserCache = true;
+      // Process strictly ONE photo at a time to prevent rate limits
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        let retryCount = 0;
+        let photoSuccess = false;
 
-          // Load the zero-shot image classification pipeline using CLIP
-          offlineClassifier = await pipeline('zero-shot-image-classification', 'Xenova/clip-vit-base-patch32', {
-            progress_callback: x => {
-              if (x.status === 'progress' && x.progress !== undefined) {
-                // Update toast with download progress
-                const p = document.getElementById('toast');
-                if (p) {
-                   p.innerHTML = `⬇️ Downloading AI model: ${Math.round(x.progress)}%`;
-                   p.className = 'toast show';
+        while (!photoSuccess && retryCount < 3) {
+          try {
+            showToast(`✨ Analyzing photo ${i + 1} of ${photos.length} (Safe Mode)...`);
+
+            const dataUrl = await getPhotoBase64(photo);
+            const commaIdx = dataUrl.indexOf(',');
+            const base64Data = commaIdx !== -1 ? dataUrl.substring(commaIdx + 1) : dataUrl;
+
+            const isOpenRouter = apiKey.startsWith('sk-or-');
+            let response = null;
+            let lastErr = null;
+            let textOut = "";
+
+            if (isOpenRouter) {
+              const url = "https://openrouter.ai/api/v1/chat/completions";
+              const openRouterContent = [
+                {
+                  type: "text",
+                  text: `You are an expert landscaping and property maintenance AI classifier. Look at this image and select the single most accurate matching caption from this exact list:\n${JSON.stringify(validCaptions)}\nReturn ONLY the exact string from the list. Do not include quotes or markdown.`
+                },
+                {
+                  type: "image_url",
+                  image_url: { url: "data:image/jpeg;base64," + base64Data }
                 }
+              ];
+              
+              const res = await fetch(url, {
+                method: "POST",
+                headers: { 
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                  model: "openrouter/free",
+                  messages: [
+                    {
+                      role: "user",
+                      content: openRouterContent
+                    }
+                  ]
+                })
+              });
+              
+              if (res.ok) {
+                 response = res;
+                 const resData = await response.json();
+                 textOut = resData.choices?.[0]?.message?.content || "";
+              } else {
+                 const errJson = await res.json().catch(() => ({}));
+                 throw new Error(errJson?.error?.message || `HTTP ${res.status}`);
+              }
+              
+            } else {
+              // Direct Google AI Studio Logic
+              const candidateModels = [
+                activeModel.name,
+                'gemini-1.5-flash',
+                'gemini-1.5-flash-latest',
+                'gemini-1.5-pro'
+              ];
+              
+              for (const ver of [activeModel.version, 'v1beta', 'v1']) {
+                for (const modelName of candidateModels) {
+                  const url = `https://generativelanguage.googleapis.com/${ver}/models/${modelName}:generateContent?key=${apiKey}`;
+                  try {
+                    const res = await fetch(url, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        contents: [{
+                          parts: [
+                            { text: `You are an expert landscaping AI. Pick the exact matching caption from this list for the image: ${JSON.stringify(validCaptions)}. Output ONLY the exact string.` },
+                            { inline_data: { mime_type: "image/jpeg", data: base64Data } }
+                          ]
+                        }]
+                      })
+                    });
+                    if (res.ok) {
+                      response = res;
+                      const resData = await response.json();
+                      textOut = resData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                      break;
+                    } else {
+                      const errJson = await res.json().catch(() => ({}));
+                      lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
+                      if (res.status === 429 || res.status === 400 || res.status === 403) throw lastErr;
+                    }
+                  } catch (fetchErr) {
+                    lastErr = fetchErr;
+                    if (fetchErr.message && !fetchErr.message.includes("fetch")) throw fetchErr;
+                  }
+                }
+                if (response) break;
+              }
+
+              if (!response) {
+                throw lastErr || new Error("Failed to connect to Gemini API");
               }
             }
-          });
-          showToast(`✅ Offline AI Model Ready!`);
-        }
 
-        // Process images one by one
-        for (let i = 0; i < photos.length; i++) {
-          const photo = photos[i];
-          showToast(`⚡ Analyzing photo ${i + 1} of ${photos.length} (100% Offline)...`);
-          
-          // Ensure we have a valid data URL
-          let imageUrl = photo.dataUrl;
-          if (!imageUrl) {
-            imageUrl = await getPhotoBase64(photo);
-          }
-          
-          // Run zero-shot classification
-          const results = await offlineClassifier(imageUrl, validCaptions);
-          
-          if (results && results.length > 0) {
-            // The first result has the highest score/probability
-            const bestMatch = results[0].label;
-            photo.caption = bestMatch;
+            // Clean the output
+            const cleanedOut = textOut.replace(/["'\[\]\n\r]/g, '').trim();
+            const matched = PREDEFINED_CAPTIONS.find(c => c.toLowerCase() === cleanedOut.toLowerCase()) || cleanedOut;
+            
+            photo.caption = matched;
             successCount++;
+            photoSuccess = true;
+            
+            // Refresh UI immediately for this photo
+            state.photoLocations.forEach((_, locIdx) => renderLocationPhotoGrid(locIdx));
+            debouncedRefresh();
+            
+          } catch (err) {
+            console.error("AI Error:", err);
+            const errMsg = (err.message || "").toLowerCase();
+            
+            if (errMsg.includes('429') || errMsg.includes('quota') || errMsg.includes('rate limit')) {
+              retryCount++;
+              if (retryCount >= 3) {
+                showToast(`⚠️ Rate limit stuck. Please wait a minute and try again.`);
+                return; 
+              }
+              showToast(`⏳ AI Rate limit reached. Pausing for 15 seconds...`);
+              await new Promise(resolve => setTimeout(resolve, 15000));
+            } else {
+              showToast(`⚠️ AI Error: ${err.message}`);
+              return; // Abort on critical errors
+            }
           }
-          
-          // Let the UI breathe so it doesn't freeze completely
-          await new Promise(resolve => setTimeout(resolve, 50));
         }
-
-        // Refresh UI
-        state.photoLocations.forEach((_, locIdx) => renderLocationPhotoGrid(locIdx));
-        debouncedRefresh();
-        showToast(`✨ Successfully auto-captioned ${successCount} photos offline!`);
-
-      } catch (err) {
-        console.error("Offline AI Error:", err);
-        showToast(`⚠️ Offline AI Error: ${err.message}`);
-        // Reset classifier in case of severe corruption
-        offlineClassifier = null;
+        
+        // SAFE DELAY: Wait 4.5 seconds between requests (OpenRouter free limit is ~10-15 RPM)
+        if (photoSuccess && i < photos.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 4500));
+        }
       }
+
+      showToast(`✨ Completed! Auto-captioned ${successCount} photos.`);
     }
 
     async function autoCaptionAllPhotos() {
