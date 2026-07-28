@@ -2732,9 +2732,17 @@ Example output format:
                 } else {
                   const errJson = await res.json().catch(() => ({}));
                   lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
+                  // If rate limit (429), bad request (400), or forbidden (403), do not fallback, throw immediately
+                  if (res.status === 429 || res.status === 400 || res.status === 403) {
+                    throw lastErr;
+                  }
                 }
               } catch (fetchErr) {
                 lastErr = fetchErr;
+                // If it was explicitly thrown above, bubble it out to break outer loops
+                if (fetchErr.message && !fetchErr.message.includes("fetch")) {
+                   throw fetchErr;
+                }
               }
             }
             if (response) break;
