@@ -2678,16 +2678,38 @@ Example output format:
             });
           }
 
-          const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-          const response = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: [{ parts }] })
-          });
+          const candidateModels = [
+            'gemini-1.5-flash',
+            'gemini-1.5-flash-latest',
+            'gemini-2.0-flash-exp',
+            'gemini-1.5-pro'
+          ];
 
-          if (!response.ok) {
-            const errJson = await response.json().catch(() => ({}));
-            throw new Error(errJson?.error?.message || `HTTP ${response.status}`);
+          let response = null;
+          let lastErr = null;
+
+          for (const modelName of candidateModels) {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            try {
+              const res = await fetch(url, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ contents: [{ parts }] })
+              });
+              if (res.ok) {
+                response = res;
+                break;
+              } else {
+                const errJson = await res.json().catch(() => ({}));
+                lastErr = new Error(errJson?.error?.message || `HTTP ${res.status}`);
+              }
+            } catch (fetchErr) {
+              lastErr = fetchErr;
+            }
+          }
+
+          if (!response) {
+            throw lastErr || new Error("Failed to connect to Gemini API");
           }
 
           const resData = await response.json();
