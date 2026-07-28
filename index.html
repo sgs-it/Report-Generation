@@ -2622,8 +2622,10 @@
       renderLocationPhotoGrid(locIdx); debouncedRefresh();
     }
 
-    // Helper: Discover active Gemini model names for user's API key dynamically
     async function getBestGeminiModel(apiKey) {
+      if (apiKey.startsWith('sk-or-')) {
+        return { version: 'v1', name: 'OpenRouter Free' };
+      }
       const versions = ['v1beta', 'v1'];
       for (const ver of versions) {
         try {
@@ -2829,9 +2831,11 @@ Example output format:
                   successCount++;
                 }
               });
+              batchSuccess = true;
+            } else {
+              throw new Error("AI returned invalid data format: " + textOut.substring(0, 100));
             }
             
-            batchSuccess = true;
           } catch (err) {
             console.error("Gemini Auto-Caption Error:", err);
             const errMsg = (err.message || "").toLowerCase();
