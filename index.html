@@ -5,9 +5,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Landscaping Report Generator</title>
-  <meta name="description" content="Professional landscaping monthly report generator with PDF export">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-    rel="stylesheet">
   <style>
     /* ===== CSS VARIABLES ===== */
     :root {
@@ -30,7 +27,7 @@
       --radius: 8px;
       --radius-lg: 12px;
       --transition: 0.2s ease;
-      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font: 'Segoe UI Variable Small', 'Calibri', sans-serif;
     }
 
     /* ===== RESET ===== */
@@ -743,7 +740,7 @@
       box-shadow: 0 4px 40px rgba(0, 0, 0, 0.4);
       margin: 0 auto 20px;
       color: #000000;
-      font-family: 'Cambria', Georgia, serif;
+      font-family: 'Calibri', 'Segoe UI Variable Small', sans-serif;
       font-size: 8pt;
       box-sizing: border-box;
       overflow: visible;
@@ -2983,6 +2980,28 @@
         textContent += `</tbody></table>`;
       }
 
+      // === WATER METER CONSUMPTION LOG ===
+      if (data.includes.waterMeter && data.waterMeter) {
+        const wm = data.waterMeter;
+        // Heading: first part underlined, second part normal (match Word style)
+        const headingParts = wm.heading.match(/^([^(]+)(\(.*\))?$/);
+        const h1 = headingParts ? headingParts[1].trim() : wm.heading;
+        const h2 = headingParts && headingParts[2] ? ' ' + headingParts[2] : '';
+        textContent += `<p style="font-size:8.5pt;margin:8px 0 2px 0;"><span style="text-decoration:underline;font-weight:600">${esc(h1)}</span>${esc(h2)}</p>`;
+        textContent += `<table style="width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:6px">`;
+        textContent += `<tr>`;
+        textContent += `<td style="border:1px solid #000;padding:3px 4px;background:#1a3a5c;color:#fff;font-weight:bold;text-align:center">Month</td>`;
+        (wm.monthHeaders || []).forEach(h => {
+          textContent += `<td style="border:1px solid #000;padding:3px 2px;background:#1a3a5c;color:#fff;text-align:center">${esc(h.replace(/\n/g,'<br>'))}</td>`;
+        });
+        textContent += `</tr><tr>`;
+        textContent += `<td style="border:1px solid #000;padding:3px 4px;font-weight:bold;font-size:7pt">Total Monthly Consumption (m³)</td>`;
+        (wm.consumption || []).forEach(v => {
+          textContent += `<td style="border:1px solid #000;padding:3px 2px;text-align:center">${esc(v)}</td>`;
+        });
+        textContent += `</tr></table>`;
+      }
+
       // Extra Tasks
       if (data.includes.extra) {
         textContent += `<div class="report-section-heading">${esc(data.extraTitle)}</div>`;
@@ -3021,28 +3040,6 @@
         textContent += `<ul class="osh-list">`;
         data.oshTopics.forEach(t => { textContent += `<li>${esc(t)}</li>`; });
         textContent += `</ul>`;
-      }
-
-      // === WATER METER CONSUMPTION LOG ===
-      if (data.includes.waterMeter && data.waterMeter) {
-        const wm = data.waterMeter;
-        // Heading: first part underlined, second part normal (match Word style)
-        const headingParts = wm.heading.match(/^([^(]+)(\(.*\))?$/);
-        const h1 = headingParts ? headingParts[1].trim() : wm.heading;
-        const h2 = headingParts && headingParts[2] ? ' ' + headingParts[2] : '';
-        textContent += `<p style="font-size:8.5pt;margin:8px 0 2px 0;"><span style="text-decoration:underline;font-weight:600">${esc(h1)}</span>${esc(h2)}</p>`;
-        textContent += `<table style="width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:6px">`;
-        textContent += `<tr>`;
-        textContent += `<td style="border:1px solid #000;padding:3px 4px;background:#1a3a5c;color:#fff;font-weight:bold;text-align:center">Month</td>`;
-        (wm.monthHeaders || []).forEach(h => {
-          textContent += `<td style="border:1px solid #000;padding:3px 2px;background:#1a3a5c;color:#fff;text-align:center">${esc(h.replace(/\n/g,'<br>'))}</td>`;
-        });
-        textContent += `</tr><tr>`;
-        textContent += `<td style="border:1px solid #000;padding:3px 4px;font-weight:bold;font-size:7pt">Total Monthly Consumption (m³)</td>`;
-        (wm.consumption || []).forEach(v => {
-          textContent += `<td style="border:1px solid #000;padding:3px 2px;text-align:center">${esc(v)}</td>`;
-        });
-        textContent += `</tr></table>`;
       }
 
       // === ASSET LIST ===
@@ -3124,7 +3121,7 @@
 
             // Show location heading at start of each location's photos
             if (start === 0 && loc.heading) {
-              photoContent += `<div style="font-family:Calibri,sans-serif;font-size:12pt;font-weight:bold;text-align:center;padding:4px 0 2px;margin-bottom:4px;color:#1a5e1f">${esc(loc.heading)}</div>`;
+              photoContent += `<div style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:12pt;font-weight:bold;text-align:center;padding:4px 0 2px;margin-bottom:4px;color:#1a5e1f">${esc(loc.heading)}</div>`;
             }
 
             photoContent += `<table class="photo-grid-table" style="--photo-row-height:${photoRowHeight}mm">`;
@@ -3351,16 +3348,16 @@
         <tr>
           <!-- Logo Cell -->
           <td width="65" style="width:50pt; padding:0 0 4px 0; vertical-align:bottom;">
-            ${logoLocation ? `<img src="${logoLocation}" width="60" height="60" style="width:45pt; height:45pt; max-width:45pt; max-height:45pt; display:block;" />` : '<div style="width:45pt;height:45pt;background:#eeeeee;border:1px solid #dddddd;font-size:10px;color:#999999;line-height:45pt;text-align:center;font-family:\'Cambria\', Georgia, serif;">LOGO</div>'}
+            ${logoLocation ? `<img src="${logoLocation}" width="60" height="60" style="width:45pt; height:45pt; max-width:45pt; max-height:45pt; display:block;" />` : '<div style="width:45pt;height:45pt;background:#eeeeee;border:1px solid #dddddd;font-size:10px;color:#999999;line-height:45pt;text-align:center;font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif;">LOGO</div>'}
           </td>
           <!-- Company Info Cell -->
           <td style="padding:0 0 4px 8px; vertical-align:bottom; text-align:left;">
-            <div style="font-size:14pt; font-weight:700; color:#1a5e1f; font-family:\'Cambria\', Georgia, serif; line-height:1.2;">${esc(data.companyName)}</div>
-            <div style="font-size:8pt; color:#333333; font-family:\'Cambria\', Georgia, serif; line-height:1.2;">${esc(data.tagline)}</div>
+            <div style="font-size:14pt; font-weight:700; color:#1a5e1f; font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif; line-height:1.2;">${esc(data.companyName)}</div>
+            <div style="font-size:8pt; color:#333333; font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif; line-height:1.2;">${esc(data.tagline)}</div>
           </td>
           <!-- Certifications Cell -->
           <td style="padding:0 0 4px 0; vertical-align:bottom; text-align:right; white-space:nowrap;">
-            <div style="font-size:6pt; color:#666666; font-family:\'Cambria\', Georgia, serif; line-height:1.2;">${esc(data.certifications)}</div>
+            <div style="font-size:6pt; color:#666666; font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif; line-height:1.2;">${esc(data.certifications)}</div>
           </td>
         </tr>
       </table>
@@ -3369,7 +3366,7 @@
 
       const getFooterHTML = () => `
     <div style="mso-element:footer" id="f1">
-      <table style="width:100%; border-collapse:collapse; margin-top:6px; border-top:1px solid #cccccc; font-size:6pt; color:#666666; font-family:\'Cambria\', Georgia, serif;">
+      <table style="width:100%; border-collapse:collapse; margin-top:6px; border-top:1px solid #cccccc; font-size:6pt; color:#666666; font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif;">
         <tr>
           <td style="width:20%; padding:4px 0 0 0; text-align:left; vertical-align:middle;">${esc(data.docCode)}</td>
           <td style="width:15%; padding:4px 0 0 0; text-align:center; vertical-align:middle;">Revision: ${esc(data.revision)}</td>
@@ -3440,6 +3437,27 @@
         textContent += `</tbody></table>` + sectionSpacer;
       }
 
+      // Water Meter
+      if (data.includes.waterMeter && data.waterMeter) {
+        const wm = data.waterMeter;
+        const headingParts = wm.heading.match(/^([^(]+)(\(.*\))?$/);
+        const h1 = headingParts ? headingParts[1].trim() : wm.heading;
+        const h2 = headingParts && headingParts[2] ? ' ' + headingParts[2] : '';
+        textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:8.5pt;margin:8px 0 2px 0;"><span style="text-decoration:underline;font-weight:600">${esc(h1)}</span>${esc(h2)}</p>`;
+        textContent += `<table style="width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small',sans-serif;">`;
+        textContent += `<tr>`;
+        textContent += `<td style="border:1px solid #000;padding:3px 4px;background:#1a3a5c;color:#ffffff;font-weight:bold;text-align:center">Month</td>`;
+        (wm.monthHeaders || []).forEach(h => {
+          textContent += `<td style="border:1px solid #000;padding:3px 2px;background:#1a3a5c;color:#ffffff;text-align:center">${esc(h.replace(/\n/g,'<br>'))}</td>`;
+        });
+        textContent += `</tr><tr>`;
+        textContent += `<td style="border:1px solid #000;padding:3px 4px;font-weight:bold;font-size:7pt">Total Monthly Consumption (m³)</td>`;
+        (wm.consumption || []).forEach(v => {
+          textContent += `<td style="border:1px solid #000;padding:3px 2px;text-align:center">${esc(v)}</td>`;
+        });
+        textContent += `</tr></table>` + sectionSpacer;
+      }
+
       // Extra Tasks
       if (data.includes.extra) {
         textContent += `<div class="report-section-heading">${esc(data.extraTitle)}</div>`;
@@ -3478,6 +3496,41 @@
         textContent += `<ul class="osh-list">`;
         data.oshTopics.forEach(t => { textContent += `<li>${esc(t)}</li>`; });
         textContent += `</ul>` + sectionSpacer;
+      }
+
+      // Asset List
+      if (data.includes.assetList) {
+        textContent += `<div style="border:2px solid #1a3a5c;background:#1a3a5c;color:#ffffff;font-size:9pt;font-weight:bold;padding:4px 8px;margin:8px 0 4px 0;text-align:center;font-family:'Calibri','Segoe UI Variable Small',sans-serif;">ASSET LIST</div>`;
+        if (data.outdoorAssets && data.outdoorAssets.length > 0) {
+          textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:8.5pt;font-weight:bold;margin:4px 0 2px 0">Outdoor Landscaping Asset List</p>`;
+          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small',sans-serif;"><thead><tr>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;text-align:center;width:30px">S/N</th>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Category</th>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Plants</th>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;width:60px">Qty</th>`;
+          textContent += `</tr></thead><tbody>`;
+          data.outdoorAssets.forEach(row => {
+            textContent += `<tr><td style="border:1px solid #000;padding:3px 4px;text-align:center">${esc(row.sn)}</td><td style="border:1px solid #000;padding:3px 4px">${esc(row.category)}</td><td style="border:1px solid #000;padding:3px 4px">${esc(row.plants)}</td><td style="border:1px solid #000;padding:3px 4px;text-align:center">${esc(row.qty)}</td></tr>`;
+          });
+          textContent += `</tbody></table>` + sectionSpacer;
+        }
+        if (data.indoorAssets && data.indoorAssets.rows && data.indoorAssets.rows.length > 0) {
+          textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:8.5pt;font-weight:bold;margin:4px 0 2px 0">Indoor Plants Asset List</p>`;
+          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small',sans-serif;"><thead><tr>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Location</th>`;
+          (data.indoorAssets.locationHeaders || []).forEach(h => {
+            textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;text-align:center">${esc(h)}</th>`;
+          });
+          textContent += `</tr></thead><tbody>`;
+          data.indoorAssets.rows.forEach(row => {
+            textContent += `<tr><td style="border:1px solid #000;padding:3px 4px;font-weight:${row.location.toLowerCase()==='total'?'bold':'normal'}">${esc(row.location)}</td>`;
+            (row.values || []).forEach(v => {
+              textContent += `<td style="border:1px solid #000;padding:3px 4px;text-align:center;font-weight:${row.location.toLowerCase()==='total'?'bold':'normal'}">${esc(v)}</td>`;
+            });
+            textContent += `</tr>`;
+          });
+          textContent += `</tbody></table>` + sectionSpacer;
+        }
       }
 
       let pagesHTML = '';
@@ -3521,7 +3574,7 @@
             }
 
             if (start === 0 && loc.heading) {
-              photoContent += `<div style="font-family:Calibri,sans-serif;font-size:12pt;font-weight:bold;text-align:center;padding:4px 0 2px;margin-bottom:4px;color:#1a5e1f">${esc(loc.heading)}</div>`;
+              photoContent += `<div style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:12pt;font-weight:bold;text-align:center;padding:4px 0 2px;margin-bottom:4px;color:#1a5e1f">${esc(loc.heading)}</div>`;
             }
 
             photoContent += `<table class="photo-grid-table" style="width:100%; border-collapse:collapse; margin-bottom:0; table-layout:fixed;">`;
@@ -3585,11 +3638,11 @@
       }
       div.Section1 { page: Section1; }
 
-      body { font-family: 'Cambria', Georgia, serif; font-size: 8pt; color: #000000; margin: 0; padding: 0; background: #ffffff; }
+      body { font-family: 'Calibri', 'Segoe UI Variable Small', sans-serif; font-size: 8pt; color: #000000; margin: 0; padding: 0; background: #ffffff; }
       
       .report-page {
         background: #ffffff; padding: 0;
-        margin: 0; color: #000000; font-family: 'Cambria', Georgia, serif; font-size: 8pt;
+        margin: 0; color: #000000; font-family: 'Calibri', 'Segoe UI Variable Small', sans-serif; font-size: 8pt;
       }
       
       .print-table { width: 100%; border-collapse: collapse; }
@@ -3794,6 +3847,23 @@
         excelHTML += `</tbody></table><br>`;
       }
 
+      // Water Meter
+      if (data.includes.waterMeter && data.waterMeter) {
+        const wm = data.waterMeter;
+        excelHTML += `<h4>${esc(wm.heading)}</h4>`;
+        excelHTML += `<table border="1"><thead><tr>`;
+        excelHTML += `<th style="background:#1a3a5c;color:#ffffff">Month</th>`;
+        (wm.monthHeaders || []).forEach(h => {
+          excelHTML += `<th style="background:#1a3a5c;color:#ffffff">${esc(h.replace(/\n/g, ' '))}</th>`;
+        });
+        excelHTML += `</tr></thead><tbody><tr>`;
+        excelHTML += `<td>Total Monthly Consumption (m³)</td>`;
+        (wm.consumption || []).forEach(v => {
+          excelHTML += `<td style="text-align:center">${esc(v)}</td>`;
+        });
+        excelHTML += `</tr></tbody></table><br>`;
+      }
+
       // Extra Tasks
       if (data.includes.extra) {
         excelHTML += `<h4>${esc(data.extraTitle)}</h4>`;
@@ -3834,6 +3904,36 @@
         excelHTML += `</ul><br>`;
       }
 
+      // Asset List
+      if (data.includes.assetList) {
+        excelHTML += `<h3 style="background:#1a3a5c;color:#ffffff;padding:4px;text-align:center">ASSET LIST</h3>`;
+        if (data.outdoorAssets && data.outdoorAssets.length > 0) {
+          excelHTML += `<h4>Outdoor Landscaping Asset List</h4>`;
+          excelHTML += `<table border="1"><thead><tr><th style="background:#c6d9f1">S/N</th><th style="background:#c6d9f1">Category</th><th style="background:#c6d9f1">Plants</th><th style="background:#c6d9f1">Qty</th></tr></thead><tbody>`;
+          data.outdoorAssets.forEach(row => {
+            excelHTML += `<tr><td style="text-align:center">${esc(row.sn)}</td><td>${esc(row.category)}</td><td>${esc(row.plants)}</td><td style="text-align:center">${esc(row.qty)}</td></tr>`;
+          });
+          excelHTML += `</tbody></table><br>`;
+        }
+        if (data.indoorAssets && data.indoorAssets.rows && data.indoorAssets.rows.length > 0) {
+          excelHTML += `<h4>Indoor Plants Asset List</h4>`;
+          excelHTML += `<table border="1"><thead><tr><th style="background:#c6d9f1">Location</th>`;
+          (data.indoorAssets.locationHeaders || []).forEach(h => {
+            excelHTML += `<th style="background:#c6d9f1;text-align:center">${esc(h)}</th>`;
+          });
+          excelHTML += `</tr></thead><tbody>`;
+          data.indoorAssets.rows.forEach(row => {
+            const isTotal = row.location.toLowerCase() === 'total';
+            excelHTML += `<tr><td style="font-weight:${isTotal?'bold':'normal'}">${esc(row.location)}</td>`;
+            (row.values || []).forEach(v => {
+              excelHTML += `<td style="text-align:center;font-weight:${isTotal?'bold':'normal'}">${esc(v)}</td>`;
+            });
+            excelHTML += `</tr>`;
+          });
+          excelHTML += `</tbody></table><br>`;
+        }
+      }
+
       // Photos
       const excelAllPhotos = data.photoLocations.flatMap(loc => loc.photos);
       if (data.includes.photos && excelAllPhotos.length > 0) {
@@ -3850,7 +3950,7 @@
         data.photoLocations.forEach((loc, locIdx) => {
           if (loc.photos.length === 0) return;
           if (loc.heading) {
-            excelHTML += `<h5 style="font-family:Calibri,sans-serif;font-size:12pt;font-weight:bold;text-align:center;color:#1a5e1f;margin:8px 0 4px 0">${esc(loc.heading)}</h5>`;
+            excelHTML += `<h5 style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:12pt;font-weight:bold;text-align:center;color:#1a5e1f;margin:8px 0 4px 0">${esc(loc.heading)}</h5>`;
           }
           excelHTML += `<table style="width:100%; border-collapse:collapse; margin-top:4px;">`;
           excelHTML += `<tr><td colspan="24" style="padding:0; border:none;">`;
@@ -4218,7 +4318,7 @@
     // ===== INJECT WATER METER EDITOR SECTION =====
     function injectWaterMeterSection(wm) {
       const editorBody = document.getElementById('editorBody');
-      const oshSection = document.getElementById('sec-osh');
+      const extraSection = document.getElementById('sec-extra');
       const secEl = document.createElement('div');
       secEl.className = 'section open';
       secEl.id = 'sec-watermeter';
@@ -4262,14 +4362,14 @@
           </div>
         </div>`;
 
-      // Insert before OSH section
-      editorBody.insertBefore(secEl, oshSection);
+      // Insert before Extra Tasks section (immediately following PPM / Operations)
+      editorBody.insertBefore(secEl, extraSection);
     }
 
     // ===== INJECT ASSET LIST EDITOR SECTION =====
     function injectAssetListSection(outdoorAssets, indoorAssets) {
       const editorBody = document.getElementById('editorBody');
-      const oshSection = document.getElementById('sec-osh');
+      const photosSection = document.getElementById('sec-photos');
       const secEl = document.createElement('div');
       secEl.className = 'section open';
       secEl.id = 'sec-assetlist';
@@ -4342,8 +4442,8 @@
           ${indoorHTML}
         </div>`;
 
-      // Insert before OSH section
-      editorBody.insertBefore(secEl, oshSection);
+      // Insert before Photos section (immediately following OSH section)
+      editorBody.insertBefore(secEl, photosSection);
     }
 
     function addOutdoorAssetRow() {
