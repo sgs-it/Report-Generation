@@ -4156,7 +4156,15 @@
       }
 
       // Contacts
-      // (Contact extraction disabled per user request)
+      if (d.contacts && d.contacts.length > 0) {
+        state.contacts = d.contacts.map(c => ({
+          role:  typeof c === 'string' ? c : (c.role  || ''),
+          name:  typeof c === 'string' ? c : (c.name  || ''),
+          phone: typeof c === 'string' ? '' : (c.phone || ''),
+          email: typeof c === 'string' ? '' : (c.email || '')
+        }));
+        renderContacts();
+      }
 
       // OSH Training
       // (OSH topics extraction disabled per user request)
@@ -4802,30 +4810,45 @@
       }
 
       // ---- CONTACT TABLE ----
+      // Identify by: headers contain Role + Name + Phone/Mobile/Contact + Email,
+      // OR context heading contains 'CONTACT DETAIL'.
+      // Guard against false positives: photo caption tables also have 4 plain text cols.
       for (const table of tables) {
         const headers = getTableHeaders(table);
         const context = tableContext.get(table) || '';
+        const allRows = Array.from(table.querySelectorAll('tr'));
 
-        const isContactByHeaders = headers.some(t => /Role|Designation/i.test(t)) &&
-          headers.some(t => /Name/i.test(t)) &&
+        const isContactByHeaders =
+          headers.some(t => /^Role$|^Designation$/i.test(t)) &&
+          headers.some(t => /^Name$/i.test(t)) &&
           (headers.some(t => /Phone|Contact|Mobile/i.test(t)) || headers.some(t => /Email/i.test(t)));
-        const isContactByContext = /CONTACT\s*DETAIL/i.test(context) && headers.length >= 3;
 
-        if (isContactByHeaders || isContactByContext) {
+        const isContactByContext =
+          /CONTACT\s*DETAIL/i.test(context) &&
+          headers.length >= 3;
+
+        // Extra guard: at least one row must have an email-like or phone-like value
+        // so we don't pick up caption/photo tables.
+        const hasContactData = allRows.some(tr => {
+          const tds = Array.from(tr.querySelectorAll('td'));
+          const texts = tds.map(td => td.textContent.trim());
+          return texts.some(t => /@/.test(t) || /\d{3}\s*\d{3}\s*\d{4}|05\d[\s\d]{8,}/.test(t));
+        });
+
+        if ((isContactByHeaders || isContactByContext) && hasContactData) {
           data.contacts = [];
           const dataRows = getDataRows(table);
           dataRows.forEach(tr => {
             const tds = Array.from(tr.querySelectorAll('td'));
-            if (tds.length >= 3) {
-              const contact = {
-                role: tds[0]?.textContent.trim() || '',
-                name: tds[1]?.textContent.trim() || '',
-                phone: tds[2]?.textContent.trim() || '',
-                email: tds.length >= 4 ? (tds[3]?.textContent.trim() || '') : ''
-              };
-              // Skip if it looks like a header row
-              if (!/^Role|^Designation/i.test(contact.role)) {
-                data.contacts.push(contact);
+            // Need at least Role + Name (2 cols), Phone optional, Email optional
+            if (tds.length >= 2) {
+              const role  = tds[0]?.textContent.trim() || '';
+              const name  = tds[1]?.textContent.trim() || '';
+              const phone = tds.length >= 3 ? (tds[2]?.textContent.trim() || '') : '';
+              const email = tds.length >= 4 ? (tds[3]?.textContent.trim() || '') : '';
+              // Skip if it looks like a header row (Role / Designation)
+              if (role && !/^Role$|^Designation$/i.test(role)) {
+                data.contacts.push({ role, name, phone, email });
               }
             }
           });
