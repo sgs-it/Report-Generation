@@ -27,7 +27,7 @@
       --radius: 8px;
       --radius-lg: 12px;
       --transition: 0.2s ease;
-      --font: 'Segoe UI Variable Small', 'Calibri', sans-serif;
+      --font: 'Segoe UI Variable Small', 'Calibri';
     }
 
     /* ===== RESET ===== */
@@ -740,7 +740,7 @@
       box-shadow: 0 4px 40px rgba(0, 0, 0, 0.4);
       margin: 0 auto 20px;
       color: #000000;
-      font-family: 'Calibri', 'Segoe UI Variable Small', sans-serif;
+      font-family: 'Calibri', 'Segoe UI Variable Small';
       font-size: 8pt;
       box-sizing: border-box;
       overflow: visible;
@@ -3121,7 +3121,7 @@
 
             // Show location heading at start of each location's photos
             if (start === 0 && loc.heading) {
-              photoContent += `<div style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:12pt;font-weight:bold;text-align:center;padding:4px 0 2px;margin-bottom:4px;color:#1a5e1f">${esc(loc.heading)}</div>`;
+              photoContent += `<div style="font-family:'Calibri','Segoe UI Variable Small';font-size:12pt;font-weight:bold;text-align:center;padding:4px 0 2px;margin-bottom:4px;color:#1a5e1f">${esc(loc.heading)}</div>`;
             }
 
             photoContent += `<table class="photo-grid-table" style="--photo-row-height:${photoRowHeight}mm">`;
@@ -3348,16 +3348,16 @@
         <tr>
           <!-- Logo Cell -->
           <td width="65" style="width:50pt; padding:0 0 4px 0; vertical-align:bottom;">
-            ${logoLocation ? `<img src="${logoLocation}" width="60" height="60" style="width:45pt; height:45pt; max-width:45pt; max-height:45pt; display:block;" />` : '<div style="width:45pt;height:45pt;background:#eeeeee;border:1px solid #dddddd;font-size:10px;color:#999999;line-height:45pt;text-align:center;font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif;">LOGO</div>'}
+            ${logoLocation ? `<img src="${logoLocation}" width="60" height="60" style="width:45pt; height:45pt; max-width:45pt; max-height:45pt; display:block;" />` : '<div style="width:45pt;height:45pt;background:#eeeeee;border:1px solid #dddddd;font-size:10px;color:#999999;line-height:45pt;text-align:center;font-family:\'Calibri\', \'Segoe UI Variable Small\';">LOGO</div>'}
           </td>
           <!-- Company Info Cell -->
           <td style="padding:0 0 4px 8px; vertical-align:bottom; text-align:left;">
-            <div style="font-size:14pt; font-weight:700; color:#1a5e1f; font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif; line-height:1.2;">${esc(data.companyName)}</div>
-            <div style="font-size:8pt; color:#333333; font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif; line-height:1.2;">${esc(data.tagline)}</div>
+            <div style="font-size:14pt; font-weight:700; color:#1a5e1f; font-family:\'Calibri\', \'Segoe UI Variable Small\'; line-height:1.2;">${esc(data.companyName)}</div>
+            <div style="font-size:8pt; color:#333333; font-family:\'Calibri\', \'Segoe UI Variable Small\'; line-height:1.2;">${esc(data.tagline)}</div>
           </td>
           <!-- Certifications Cell -->
           <td style="padding:0 0 4px 0; vertical-align:bottom; text-align:right; white-space:nowrap;">
-            <div style="font-size:6pt; color:#666666; font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif; line-height:1.2;">${esc(data.certifications)}</div>
+            <div style="font-size:6pt; color:#666666; font-family:\'Calibri\', \'Segoe UI Variable Small\'; line-height:1.2;">${esc(data.certifications)}</div>
           </td>
         </tr>
       </table>
@@ -3366,7 +3366,7 @@
 
       const getFooterHTML = () => `
     <div style="mso-element:footer" id="f1">
-      <table style="width:100%; border-collapse:collapse; margin-top:6px; border-top:1px solid #cccccc; font-size:6pt; color:#666666; font-family:\'Calibri\', \'Segoe UI Variable Small\', sans-serif;">
+      <table style="width:100%; border-collapse:collapse; margin-top:6px; border-top:1px solid #cccccc; font-size:6pt; color:#666666; font-family:\'Calibri\', \'Segoe UI Variable Small\';">
         <tr>
           <td style="width:20%; padding:4px 0 0 0; text-align:left; vertical-align:middle;">${esc(data.docCode)}</td>
           <td style="width:15%; padding:4px 0 0 0; text-align:center; vertical-align:middle;">Revision: ${esc(data.revision)}</td>
@@ -3443,8 +3443,8 @@
         const headingParts = wm.heading.match(/^([^(]+)(\(.*\))?$/);
         const h1 = headingParts ? headingParts[1].trim() : wm.heading;
         const h2 = headingParts && headingParts[2] ? ' ' + headingParts[2] : '';
-        textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:8.5pt;margin:8px 0 2px 0;"><span style="text-decoration:underline;font-weight:600">${esc(h1)}</span>${esc(h2)}</p>`;
-        textContent += `<table style="width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small',sans-serif;">`;
+        textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small';font-size:8.5pt;margin:8px 0 2px 0;"><span style="text-decoration:underline;font-weight:600">${esc(h1)}</span>${esc(h2)}</p>`;
+        textContent += `<table style="width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small';">`;
         textContent += `<tr>`;
         textContent += `<td style="border:1px solid #000;padding:3px 4px;background:#1a3a5c;color:#ffffff;font-weight:bold;text-align:center">Month</td>`;
         (wm.monthHeaders || []).forEach(h => {
@@ -3500,10 +3500,10 @@
 
       // Asset List
       if (data.includes.assetList) {
-        textContent += `<div style="border:2px solid #1a3a5c;background:#1a3a5c;color:#ffffff;font-size:9pt;font-weight:bold;padding:4px 8px;margin:8px 0 4px 0;text-align:center;font-family:'Calibri','Segoe UI Variable Small',sans-serif;">ASSET LIST</div>`;
+        textContent += `<div style="border:2px solid #1a3a5c;background:#1a3a5c;color:#ffffff;font-size:9pt;font-weight:bold;padding:4px 8px;margin:8px 0 4px 0;text-align:center;font-family:'Calibri','Segoe UI Variable Small';">ASSET LIST</div>`;
         if (data.outdoorAssets && data.outdoorAssets.length > 0) {
-          textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:8.5pt;font-weight:bold;margin:4px 0 2px 0">Outdoor Landscaping Asset List</p>`;
-          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small',sans-serif;"><thead><tr>`;
+          textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small';font-size:8.5pt;font-weight:bold;margin:4px 0 2px 0">Outdoor Landscaping Asset List</p>`;
+          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small';"><thead><tr>`;
           textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;text-align:center;width:30px">S/N</th>`;
           textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Category</th>`;
           textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Plants</th>`;
@@ -3515,8 +3515,8 @@
           textContent += `</tbody></table>` + sectionSpacer;
         }
         if (data.indoorAssets && data.indoorAssets.rows && data.indoorAssets.rows.length > 0) {
-          textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:8.5pt;font-weight:bold;margin:4px 0 2px 0">Indoor Plants Asset List</p>`;
-          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small',sans-serif;"><thead><tr>`;
+          textContent += `<p style="font-family:'Calibri','Segoe UI Variable Small';font-size:8.5pt;font-weight:bold;margin:4px 0 2px 0">Indoor Plants Asset List</p>`;
+          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px;font-family:'Calibri','Segoe UI Variable Small';"><thead><tr>`;
           textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Location</th>`;
           (data.indoorAssets.locationHeaders || []).forEach(h => {
             textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;text-align:center">${esc(h)}</th>`;
@@ -3574,7 +3574,7 @@
             }
 
             if (start === 0 && loc.heading) {
-              photoContent += `<div style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:12pt;font-weight:bold;text-align:center;padding:4px 0 2px;margin-bottom:4px;color:#1a5e1f">${esc(loc.heading)}</div>`;
+              photoContent += `<div style="font-family:'Calibri','Segoe UI Variable Small';font-size:12pt;font-weight:bold;text-align:center;padding:4px 0 2px;margin-bottom:4px;color:#1a5e1f">${esc(loc.heading)}</div>`;
             }
 
             photoContent += `<table class="photo-grid-table" style="width:100%; border-collapse:collapse; margin-bottom:0; table-layout:fixed;">`;
@@ -3638,11 +3638,11 @@
       }
       div.Section1 { page: Section1; }
 
-      body { font-family: 'Calibri', 'Segoe UI Variable Small', sans-serif; font-size: 8pt; color: #000000; margin: 0; padding: 0; background: #ffffff; }
+      body { font-family: 'Calibri', 'Segoe UI Variable Small'; font-size: 8pt; color: #000000; margin: 0; padding: 0; background: #ffffff; }
       
       .report-page {
         background: #ffffff; padding: 0;
-        margin: 0; color: #000000; font-family: 'Calibri', 'Segoe UI Variable Small', sans-serif; font-size: 8pt;
+        margin: 0; color: #000000; font-family: 'Calibri', 'Segoe UI Variable Small'; font-size: 8pt;
       }
       
       .print-table { width: 100%; border-collapse: collapse; }
@@ -3950,7 +3950,7 @@
         data.photoLocations.forEach((loc, locIdx) => {
           if (loc.photos.length === 0) return;
           if (loc.heading) {
-            excelHTML += `<h5 style="font-family:'Calibri','Segoe UI Variable Small',sans-serif;font-size:12pt;font-weight:bold;text-align:center;color:#1a5e1f;margin:8px 0 4px 0">${esc(loc.heading)}</h5>`;
+            excelHTML += `<h5 style="font-family:'Calibri','Segoe UI Variable Small';font-size:12pt;font-weight:bold;text-align:center;color:#1a5e1f;margin:8px 0 4px 0">${esc(loc.heading)}</h5>`;
           }
           excelHTML += `<table style="width:100%; border-collapse:collapse; margin-top:4px;">`;
           excelHTML += `<tr><td colspan="24" style="padding:0; border:none;">`;
