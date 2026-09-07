@@ -2158,6 +2158,10 @@
         { role: 'Operations Coordinator', name: 'Ebin Shiji', phone: '052 848 0151', email: 'operations@italianplanters.com' }
       ],
       oshTopics: ['Emergency rescue plan', 'COSHH & spillage procedure', 'Fire Safety', 'Common falling object'],
+      // New sections — null means not present (not extracted from uploaded file)
+      waterMeter: null,   // { heading, monthHeaders:[12 strings], consumption:[12 strings] }
+      outdoorAssets: null, // [ { sn, category, plants, qty } ]
+      indoorAssets: null,  // { locationHeaders:[...], rows:[{ location, values:[...] }] }
     };
     let photoIdCounter = 0;
     let debounceTimer = null;
@@ -2822,6 +2826,42 @@
       data.constraints = state.constraints;
       data.contacts = state.contacts;
       data.oshTopics = state.oshTopics;
+
+      // Water Meter — read from state (set by applyUploadedData)
+      data.waterMeter = state.waterMeter;
+      if (data.waterMeter && document.getElementById('waterMeterHeading')) {
+        data.waterMeter.heading = document.getElementById('waterMeterHeading').value;
+        const hdrs = document.querySelectorAll('.wm-month-header');
+        const vals = document.querySelectorAll('.wm-month-val');
+        data.waterMeter.monthHeaders = Array.from(hdrs).map(i => i.value);
+        data.waterMeter.consumption  = Array.from(vals).map(i => i.value);
+      }
+
+      // Outdoor Assets — read from DOM if section present
+      data.outdoorAssets = state.outdoorAssets;
+      if (state.outdoorAssets && document.getElementById('outdoorAssetsBody')) {
+        data.outdoorAssets = [];
+        document.querySelectorAll('#outdoorAssetsBody tr').forEach(tr => {
+          const inp = tr.querySelectorAll('input[type="text"]');
+          data.outdoorAssets.push({ sn: inp[0]?.value||'', category: inp[1]?.value||'', plants: inp[2]?.value||'', qty: inp[3]?.value||'' });
+        });
+      }
+
+      // Indoor Assets — read from DOM if section present
+      data.indoorAssets = state.indoorAssets;
+      if (state.indoorAssets && document.getElementById('indoorAssetsBody')) {
+        const colHdrInputs = document.querySelectorAll('.indoor-col-header');
+        const locationHeaders = Array.from(colHdrInputs).map(i => i.value);
+        const rows = [];
+        document.querySelectorAll('#indoorAssetsBody tr').forEach(tr => {
+          const inp = tr.querySelectorAll('input[type="text"]');
+          if (inp.length > 0) {
+            rows.push({ location: inp[0]?.value||'', values: Array.from(inp).slice(1).map(i => i.value) });
+          }
+        });
+        data.indoorAssets = { locationHeaders, rows };
+      }
+
       data.includes = {
         details: document.getElementById('inc-sec-details').checked,
         annual: document.getElementById('inc-sec-annual').checked,
@@ -2833,7 +2873,9 @@
         contacts: document.getElementById('inc-sec-contacts').checked,
         osh: document.getElementById('inc-sec-osh').checked,
         photos: document.getElementById('inc-sec-photos').checked,
-        signature: document.getElementById('inc-sec-signature').checked
+        signature: document.getElementById('inc-sec-signature').checked,
+        waterMeter: state.waterMeter != null && (document.getElementById('inc-sec-watermeter') ? document.getElementById('inc-sec-watermeter').checked : true),
+        assetList: (state.outdoorAssets != null || state.indoorAssets != null) && (document.getElementById('inc-sec-assetlist') ? document.getElementById('inc-sec-assetlist').checked : true)
       };
       return data;
     }
@@ -2979,6 +3021,63 @@
         textContent += `<ul class="osh-list">`;
         data.oshTopics.forEach(t => { textContent += `<li>${esc(t)}</li>`; });
         textContent += `</ul>`;
+      }
+
+      // === WATER METER CONSUMPTION LOG ===
+      if (data.includes.waterMeter && data.waterMeter) {
+        const wm = data.waterMeter;
+        // Heading: first part underlined, second part normal (match Word style)
+        const headingParts = wm.heading.match(/^([^(]+)(\(.*\))?$/);
+        const h1 = headingParts ? headingParts[1].trim() : wm.heading;
+        const h2 = headingParts && headingParts[2] ? ' ' + headingParts[2] : '';
+        textContent += `<p style="font-size:8.5pt;margin:8px 0 2px 0;"><span style="text-decoration:underline;font-weight:600">${esc(h1)}</span>${esc(h2)}</p>`;
+        textContent += `<table style="width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:6px">`;
+        textContent += `<tr>`;
+        textContent += `<td style="border:1px solid #000;padding:3px 4px;background:#1a3a5c;color:#fff;font-weight:bold;text-align:center">Month</td>`;
+        (wm.monthHeaders || []).forEach(h => {
+          textContent += `<td style="border:1px solid #000;padding:3px 2px;background:#1a3a5c;color:#fff;text-align:center">${esc(h.replace(/\n/g,'<br>'))}</td>`;
+        });
+        textContent += `</tr><tr>`;
+        textContent += `<td style="border:1px solid #000;padding:3px 4px;font-weight:bold;font-size:7pt">Total Monthly Consumption (m³)</td>`;
+        (wm.consumption || []).forEach(v => {
+          textContent += `<td style="border:1px solid #000;padding:3px 2px;text-align:center">${esc(v)}</td>`;
+        });
+        textContent += `</tr></table>`;
+      }
+
+      // === ASSET LIST ===
+      if (data.includes.assetList) {
+        textContent += `<div style="border:2px solid #1a3a5c;background:#1a3a5c;color:#fff;font-size:9pt;font-weight:bold;padding:4px 8px;margin:8px 0 4px 0;text-align:center">ASSET LIST</div>`;
+        if (data.outdoorAssets && data.outdoorAssets.length > 0) {
+          textContent += `<p style="font-size:8.5pt;font-weight:bold;margin:4px 0 2px 0">Outdoor Landscaping Asset List</p>`;
+          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px"><thead><tr>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;text-align:center;width:30px">S/N</th>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Category</th>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Plants</th>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;width:60px">Qty</th>`;
+          textContent += `</tr></thead><tbody>`;
+          data.outdoorAssets.forEach(row => {
+            textContent += `<tr><td style="border:1px solid #000;padding:3px 4px;text-align:center">${esc(row.sn)}</td><td style="border:1px solid #000;padding:3px 4px">${esc(row.category)}</td><td style="border:1px solid #000;padding:3px 4px">${esc(row.plants)}</td><td style="border:1px solid #000;padding:3px 4px;text-align:center">${esc(row.qty)}</td></tr>`;
+          });
+          textContent += `</tbody></table>`;
+        }
+        if (data.indoorAssets && data.indoorAssets.rows && data.indoorAssets.rows.length > 0) {
+          textContent += `<p style="font-size:8.5pt;font-weight:bold;margin:4px 0 2px 0">Indoor Plants Asset List</p>`;
+          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px"><thead><tr>`;
+          textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Location</th>`;
+          (data.indoorAssets.locationHeaders || []).forEach(h => {
+            textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;text-align:center">${esc(h)}</th>`;
+          });
+          textContent += `</tr></thead><tbody>`;
+          data.indoorAssets.rows.forEach(row => {
+            textContent += `<tr><td style="border:1px solid #000;padding:3px 4px;font-weight:${row.location.toLowerCase()==='total'?'bold':'normal'}">${esc(row.location)}</td>`;
+            (row.values || []).forEach(v => {
+              textContent += `<td style="border:1px solid #000;padding:3px 4px;text-align:center;font-weight:${row.location.toLowerCase()==='total'?'bold':'normal'}">${esc(v)}</td>`;
+            });
+            textContent += `</tr>`;
+          });
+          textContent += `</tbody></table>`;
+        }
       }
 
       let fullHTML = '';
@@ -3953,6 +4052,9 @@
         { key: 'oshTopics', label: 'OSH Training', isArr: true },
         { key: 'photos', label: 'Photographs', isArr: true },
         { key: 'sigName', label: 'Signature' },
+        { key: 'waterMeter', label: 'Water Meter Consumption Log', isObj: true },
+        { key: 'outdoorAssets', label: 'Asset List (Outdoor)', isArr: true },
+        { key: 'indoorAssets', label: 'Asset List (Indoor)', isObj: true },
       ];
 
       const list = document.getElementById('uploadSummaryList');
@@ -3962,6 +4064,8 @@
         let found = false;
         if (s.isArr) {
           found = Array.isArray(val) && val.length > 0;
+        } else if (s.isObj) {
+          found = val != null && typeof val === 'object';
         } else {
           found = val && val.trim && val.trim().length > 0;
         }
@@ -4075,9 +4179,190 @@
       if (d.sigName) document.getElementById('sigName').value = d.sigName;
       if (d.sigDate) document.getElementById('sigDate').value = d.sigDate;
 
+      // ===== WATER METER (dynamic editor section) =====
+      // Remove any existing section first
+      const existingWM = document.getElementById('sec-watermeter');
+      if (existingWM) existingWM.remove();
+      state.waterMeter = null;
+
+      if (d.waterMeter) {
+        state.waterMeter = d.waterMeter;
+        injectWaterMeterSection(d.waterMeter);
+      }
+
+      // ===== ASSET LIST (dynamic editor section) =====
+      const existingAL = document.getElementById('sec-assetlist');
+      if (existingAL) existingAL.remove();
+      state.outdoorAssets = null;
+      state.indoorAssets = null;
+
+      if (d.outdoorAssets || d.indoorAssets) {
+        state.outdoorAssets = d.outdoorAssets || null;
+        state.indoorAssets = d.indoorAssets || null;
+        injectAssetListSection(d.outdoorAssets, d.indoorAssets);
+      }
+
       closeUploadModal();
       debouncedRefresh();
       showToast('✅ Report data imported successfully!');
+    }
+
+    // ===== INJECT WATER METER EDITOR SECTION =====
+    function injectWaterMeterSection(wm) {
+      const editorBody = document.getElementById('editorBody');
+      const oshSection = document.getElementById('sec-osh');
+      const secEl = document.createElement('div');
+      secEl.className = 'section open';
+      secEl.id = 'sec-watermeter';
+
+      const months = wm.monthHeaders || ['January','February','March','April','May','June','July','August','September','October','November','December'];
+      const cons   = wm.consumption  || Array(12).fill('');
+
+      let headerInputs = months.map((m,i) =>
+        `<th style="min-width:52px"><input type="text" class="wm-month-header" value="${esc(m.replace(/\n/g,' '))}" style="width:52px;font-size:9px;padding:2px;text-align:center" onchange="debouncedRefresh()"></th>`
+      ).join('');
+      let valInputs = cons.map((v,i) =>
+        `<td><input type="text" class="wm-month-val" value="${esc(v)}" style="width:52px;font-size:9px;padding:2px;text-align:center" onchange="debouncedRefresh()"></td>`
+      ).join('');
+
+      secEl.innerHTML = `
+        <div class="section-header" onclick="toggleSection('sec-watermeter')">
+          <h2><span class="dot"></span>Water Meter Consumption Log</h2>
+          <div class="section-header-right">
+            <label class="section-toggle" onclick="event.stopPropagation()"><input type="checkbox" id="inc-sec-watermeter" checked onchange="debouncedRefresh()"> Include</label>
+            <span class="section-chevron">▼</span>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="form-group" style="margin-bottom:8px">
+            <label style="font-size:11px">Section Heading</label>
+            <input type="text" id="waterMeterHeading" value="${esc(wm.heading)}" style="font-size:11px" onchange="debouncedRefresh()">
+          </div>
+          <div class="table-scroll">
+            <table class="dynamic-table" style="font-size:10px">
+              <thead><tr>
+                <th style="min-width:120px">Month</th>
+                ${headerInputs}
+              </tr></thead>
+              <tbody>
+                <tr>
+                  <td style="font-size:9px;font-weight:600">Total Monthly Consumption (m³)</td>
+                  ${valInputs}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+
+      // Insert before OSH section
+      editorBody.insertBefore(secEl, oshSection);
+    }
+
+    // ===== INJECT ASSET LIST EDITOR SECTION =====
+    function injectAssetListSection(outdoorAssets, indoorAssets) {
+      const editorBody = document.getElementById('editorBody');
+      const oshSection = document.getElementById('sec-osh');
+      const secEl = document.createElement('div');
+      secEl.className = 'section open';
+      secEl.id = 'sec-assetlist';
+
+      // Build outdoor assets table
+      let outdoorHTML = '';
+      if (outdoorAssets && outdoorAssets.length > 0) {
+        let rows = outdoorAssets.map((r,i) => `
+          <tr>
+            <td><input type="text" value="${esc(r.sn)}" style="width:36px" onchange="debouncedRefresh()"></td>
+            <td><input type="text" value="${esc(r.category)}" onchange="debouncedRefresh()"></td>
+            <td><input type="text" value="${esc(r.plants)}" onchange="debouncedRefresh()"></td>
+            <td><input type="text" value="${esc(r.qty)}" style="width:60px" onchange="debouncedRefresh()"></td>
+            <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();debouncedRefresh()">✕</button></td>
+          </tr>`).join('');
+        outdoorHTML = `
+          <p style="font-size:11px;font-weight:600;margin:8px 0 4px">Outdoor Landscaping Asset List</p>
+          <div class="table-scroll">
+            <table class="dynamic-table" style="font-size:10px">
+              <thead><tr>
+                <th style="width:40px">S/N</th>
+                <th>Category</th>
+                <th>Plants</th>
+                <th style="width:65px">Qty</th>
+                <th style="width:30px"></th>
+              </tr></thead>
+              <tbody id="outdoorAssetsBody">${rows}</tbody>
+            </table>
+          </div>
+          <button class="add-row-btn" onclick="addOutdoorAssetRow()">+ Add Row</button>`;
+      }
+
+      // Build indoor assets table
+      let indoorHTML = '';
+      if (indoorAssets && indoorAssets.rows && indoorAssets.rows.length > 0) {
+        const locHdrs = indoorAssets.locationHeaders || [];
+        let colHdrs = locHdrs.map(h =>
+          `<th><input type="text" class="indoor-col-header" value="${esc(h)}" style="width:70px;font-size:9px" onchange="debouncedRefresh()"></th>`
+        ).join('');
+        let dataRows = indoorAssets.rows.map(row => {
+          const vals = row.values || [];
+          let cells = vals.map(v => `<td><input type="text" value="${esc(v)}" style="width:60px;text-align:center;font-size:9px" onchange="debouncedRefresh()"></td>`).join('');
+          return `<tr><td><input type="text" value="${esc(row.location)}" style="width:90px;font-size:9px" onchange="debouncedRefresh()"></td>${cells}<td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();debouncedRefresh()">✕</button></td></tr>`;
+        }).join('');
+        indoorHTML = `
+          <p style="font-size:11px;font-weight:600;margin:8px 0 4px">Indoor Plants Asset List</p>
+          <div class="table-scroll">
+            <table class="dynamic-table" style="font-size:10px">
+              <thead><tr>
+                <th style="min-width:100px">Location</th>
+                ${colHdrs}
+                <th style="width:30px"></th>
+              </tr></thead>
+              <tbody id="indoorAssetsBody">${dataRows}</tbody>
+            </table>
+          </div>
+          <button class="add-row-btn" onclick="addIndoorAssetRow()">+ Add Row</button>`;
+      }
+
+      secEl.innerHTML = `
+        <div class="section-header" onclick="toggleSection('sec-assetlist')">
+          <h2><span class="dot"></span>Asset List</h2>
+          <div class="section-header-right">
+            <label class="section-toggle" onclick="event.stopPropagation()"><input type="checkbox" id="inc-sec-assetlist" checked onchange="debouncedRefresh()"> Include</label>
+            <span class="section-chevron">▼</span>
+          </div>
+        </div>
+        <div class="section-body">
+          ${outdoorHTML}
+          ${indoorHTML}
+        </div>`;
+
+      // Insert before OSH section
+      editorBody.insertBefore(secEl, oshSection);
+    }
+
+    function addOutdoorAssetRow() {
+      const tbody = document.getElementById('outdoorAssetsBody');
+      if (!tbody) return;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" value="" style="width:36px" onchange="debouncedRefresh()"></td>
+        <td><input type="text" value="" onchange="debouncedRefresh()"></td>
+        <td><input type="text" value="" onchange="debouncedRefresh()"></td>
+        <td><input type="text" value="" style="width:60px" onchange="debouncedRefresh()"></td>
+        <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();debouncedRefresh()">✕</button></td>`;
+      tbody.appendChild(tr);
+    }
+
+    function addIndoorAssetRow() {
+      const tbody = document.getElementById('indoorAssetsBody');
+      if (!tbody) return;
+      const colCount = (state.indoorAssets?.locationHeaders?.length) || document.querySelectorAll('.indoor-col-header').length;
+      const tr = document.createElement('tr');
+      let cells = `<td><input type="text" value="" style="width:90px;font-size:9px" onchange="debouncedRefresh()"></td>`;
+      for (let i = 0; i < colCount; i++) {
+        cells += `<td><input type="text" value="" style="width:60px;text-align:center;font-size:9px" onchange="debouncedRefresh()"></td>`;
+      }
+      cells += `<td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();debouncedRefresh()">✕</button></td>`;
+      tr.innerHTML = cells;
+      tbody.appendChild(tr);
     }
 
     // ===== PDF PARSING (PDF.js) =====
@@ -4633,6 +4918,131 @@
           break;
         }
       }
+
+      // ---- WATER METER CONSUMPTION LOG ----
+      // Look for a paragraph heading containing 'water meter consumption' or 'irrigation water meter'
+      // followed by a 2-row × 13-col table
+      (function extractWaterMeter() {
+        const allEls = Array.from(doc.body.children);
+        for (let i = 0; i < allEls.length; i++) {
+          const el = allEls[i];
+          const tag = el.tagName.toLowerCase();
+          const text = el.textContent.trim();
+          if ((tag === 'p' || tag === 'div') && /irrigation.*water.*meter|water.*meter.*consumption/i.test(text)) {
+            // Found heading — look for the next table
+            for (let j = i + 1; j < Math.min(i + 4, allEls.length); j++) {
+              if (allEls[j].tagName && allEls[j].tagName.toLowerCase() === 'table') {
+                const tbl = allEls[j];
+                const rows = Array.from(tbl.querySelectorAll('tr'));
+                if (rows.length >= 2) {
+                  const headerCells = Array.from(rows[0].querySelectorAll('td,th'));
+                  const valCells    = Array.from(rows[1].querySelectorAll('td,th'));
+                  if (headerCells.length >= 2) {
+                    data.waterMeter = {
+                      heading: text,
+                      monthHeaders: headerCells.slice(1).map(c => c.textContent.trim()),
+                      consumption:  valCells.slice(1).map(c => c.textContent.trim())
+                    };
+                  }
+                }
+                break;
+              }
+            }
+            break;
+          }
+          // Also handle the case where the heading is inside the table itself as context
+          if (tag === 'table') {
+            const ctx = tableContext.get(el) || '';
+            if (/irrigation.*water.*meter|water.*meter.*consumption/i.test(ctx)) {
+              const rows = Array.from(el.querySelectorAll('tr'));
+              if (rows.length >= 2) {
+                const headerCells = Array.from(rows[0].querySelectorAll('td,th'));
+                const valCells    = Array.from(rows[1].querySelectorAll('td,th'));
+                if (headerCells.length >= 2) {
+                  data.waterMeter = {
+                    heading: ctx,
+                    monthHeaders: headerCells.slice(1).map(c => c.textContent.trim()),
+                    consumption:  valCells.slice(1).map(c => c.textContent.trim())
+                  };
+                }
+              }
+            }
+          }
+        }
+        // Fallback: search all tables for Month header + Total Monthly Consumption pattern
+        if (!data.waterMeter) {
+          for (const tbl of tables) {
+            const rows = Array.from(tbl.querySelectorAll('tr'));
+            if (rows.length >= 2) {
+              const firstRowText = rows[0].textContent.trim();
+              const secondRowText = rows[1].textContent.trim();
+              if (/Month/i.test(firstRowText) && /Total.*Consumption|Consumption.*m.?3/i.test(secondRowText)) {
+                const headerCells = Array.from(rows[0].querySelectorAll('td,th'));
+                const valCells    = Array.from(rows[1].querySelectorAll('td,th'));
+                const heading = tableContext.get(tbl) || 'Irrigation Water Meter Consumption Log';
+                data.waterMeter = {
+                  heading,
+                  monthHeaders: headerCells.slice(1).map(c => c.textContent.trim()),
+                  consumption:  valCells.slice(1).map(c => c.textContent.trim())
+                };
+                break;
+              }
+            }
+          }
+        }
+      })();
+
+      // ---- ASSET LIST ----
+      // Outdoor: S/N | Category | Plants | Qty (4 cols)
+      (function extractAssets() {
+        for (const table of tables) {
+          const headers = getTableHeaders(table);
+          const ctx = tableContext.get(table) || '';
+          // Outdoor assets: headers have S/N + Category + Plants + Qty
+          if (!data.outdoorAssets &&
+              headers.some(h => /S\/N|S\.N/i.test(h)) &&
+              headers.some(h => /Category/i.test(h)) &&
+              headers.some(h => /Plants?/i.test(h)) &&
+              headers.some(h => /Qty|Quantity/i.test(h))) {
+            data.outdoorAssets = [];
+            const dataRows = getDataRows(table);
+            dataRows.forEach(tr => {
+              const tds = Array.from(tr.querySelectorAll('td'));
+              if (tds.length >= 4) {
+                data.outdoorAssets.push({
+                  sn:       tds[0]?.textContent.trim() || '',
+                  category: tds[1]?.textContent.trim() || '',
+                  plants:   tds[2]?.textContent.trim() || '',
+                  qty:      tds[3]?.textContent.trim() || ''
+                });
+              }
+            });
+            if (data.outdoorAssets.length === 0) data.outdoorAssets = null;
+          }
+          // Indoor assets: identified by Location header + building/floor data
+          if (!data.indoorAssets &&
+              headers.some(h => /Location/i.test(h)) &&
+              headers.length >= 2 &&
+              (headers.some(h => /ENOC|House|Level|Building|Floor/i.test(h)) ||
+               (/ASSET|INDOOR|Plants/i.test(ctx)))) {
+            const locationHeaders = headers.slice(1);
+            const rows = [];
+            const dataRows = getDataRows(table);
+            dataRows.forEach(tr => {
+              const tds = Array.from(tr.querySelectorAll('td'));
+              if (tds.length >= 2) {
+                rows.push({
+                  location: tds[0]?.textContent.trim() || '',
+                  values:   tds.slice(1).map(td => td.textContent.trim())
+                });
+              }
+            });
+            if (rows.length > 0) {
+              data.indoorAssets = { locationHeaders, rows };
+            }
+          }
+        }
+      })();
 
       // ---- ALWAYS FALLBACK per-field using raw text ----
       if (rawText) {
