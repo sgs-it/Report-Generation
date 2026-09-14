@@ -543,9 +543,7 @@
       font-size: 12px;
     }
 
-    .photo-upload-zone input[type="file"] {
-      display: none !important;
-    }
+    /* photo file input is hidden via label wrapper, not display:none */
 
     .photo-upload-btn {
       display: inline-flex;
@@ -2506,10 +2504,12 @@
         ${state.photoLocations.length > 1 ? `<button class="remove-location" onclick="removePhotoLocation(${locIdx})">✕ Remove</button>` : ''}
       </div>
       <div class="photo-upload-zone" id="photoZone_${locIdx}">
-        <input type="file" id="photoInput_${locIdx}" accept="image/*,.jpeg,.jpg,.png,.webp" multiple>
         <div class="icon">📸</div>
         <p>Drag & drop photos here, or click the button below</p>
-        <button type="button" class="photo-upload-btn" onclick="document.getElementById('photoInput_${locIdx}').click();">📁 Choose Photos</button>
+        <label for="photoInput_${locIdx}" class="photo-upload-btn" style="cursor:pointer;">
+          📁 Choose Photos
+          <input type="file" id="photoInput_${locIdx}" accept="image/*" multiple style="position:absolute;width:0;height:0;opacity:0;overflow:hidden;">
+        </label>
       </div>
       <div class="photo-grid-editor" id="photoGrid_${locIdx}"></div>
     `;
