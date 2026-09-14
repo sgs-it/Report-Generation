@@ -2500,14 +2500,17 @@
         <button class="btn btn-sm" style="background:rgba(139,92,246,0.15); color:#a855f7; border:1px solid rgba(139,92,246,0.4); margin-left:auto; font-size:11px; padding:3px 10px; border-radius:4px; cursor:pointer; font-weight:600;" onclick="autoCaptionLocationPhotos(${locIdx})">✨ AI Caption</button>
         ${state.photoLocations.length > 1 ? `<button class="remove-location" onclick="removePhotoLocation(${locIdx})">✕ Remove</button>` : ''}
       </div>
-      <label for="photoInput_${locIdx}" class="photo-upload-zone" id="photoZone_${locIdx}" style="cursor:pointer; display:block;">
-        <input type="file" id="photoInput_${locIdx}" accept="image/*" multiple style="position:absolute;width:0;height:0;opacity:0;overflow:hidden;">
-        <div class="icon">📸</div>
-        <p>Click anywhere here to choose photos<br>
-          <span style="font-size:11px; color:var(--accent); font-weight:600;">💡 Hold Ctrl (or Cmd on Mac) to select multiple photos at once</span>
-        </p>
-        <span class="photo-upload-btn" style="pointer-events:none;">📁 Choose Photos</span>
-      </label>
+      <div class="photo-upload-zone" id="photoZone_${locIdx}" style="position:relative; overflow:hidden;">
+        <input type="file" id="photoInput_${locIdx}" accept="image/*" multiple
+               style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:10;font-size:0;">
+        <div style="pointer-events:none; display:flex; flex-direction:column; align-items:center; justify-content:center; width:100%; height:100%;">
+          <div class="icon">📸</div>
+          <p>Click here to choose photos<br>
+            <span style="font-size:11px; color:var(--accent); font-weight:600;">💡 Hold Ctrl (or Cmd on Mac) to select multiple at once</span>
+          </p>
+          <span class="photo-upload-btn" style="margin-top:8px;">📁 Choose Photos</span>
+        </div>
+      </div>
       <div class="photo-grid-editor" id="photoGrid_${locIdx}"></div>
     `;
         container.appendChild(card);
