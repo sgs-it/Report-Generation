@@ -2448,24 +2448,21 @@
     ];
 
     function renderOshTopics() {
-      // Always enforce fixed topics
-      state.oshTopics = [...FIXED_OSH_TOPICS];
       const container = document.getElementById('oshList');
       container.innerHTML = '';
-      FIXED_OSH_TOPICS.forEach((t) => {
+      state.oshTopics.forEach((t, i) => {
         const div = document.createElement('div');
         div.className = 'form-row';
         div.style.alignItems = 'center';
         div.innerHTML = `
       <div class="form-group" style="margin-bottom:0; flex:1;">
-        <input type="text" value="${t}" readonly style="background:rgba(46,160,67,0.06); border-color:rgba(46,160,67,0.25); color:var(--text-secondary); cursor:default;">
+        <input type="text" value="${t}" onchange="state.oshTopics[${i}]=this.value;debouncedRefresh()">
       </div>
-      <span style="font-size:10px; color:var(--accent); padding:0 6px; white-space:nowrap;">🔒 Fixed</span>
     `;
         container.appendChild(div);
       });
     }
-    function addOshTopic() { /* disabled - topics are fixed */ }
+    function addOshTopic() { /* disabled - topic count is fixed */ }
 
     // ===== PHOTO LOCATIONS =====
     function addPhotoLocation() {
