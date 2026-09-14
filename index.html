@@ -1869,7 +1869,7 @@
           <div class="section-body">
             <input type="text" class="section-title-input" id="oshTitle" value="OSH TRAINING">
             <div id="oshList"></div>
-            <button class="add-row-btn" onclick="addOshTopic()">+ Add Training Topic</button>
+            <button class="add-row-btn" onclick="addOshTopic()" style="display:none;">+ Add Training Topic</button>
           </div>
         </div>
 
@@ -2175,7 +2175,7 @@
       contacts: [
         { role: 'Operations Coordinator', name: 'Ebin Shiji', phone: '052 848 0151', email: 'operations@italianplanters.com' }
       ],
-      oshTopics: ['Emergency rescue plan', 'COSHH & spillage procedure', 'Fire Safety', 'Common falling object'],
+      oshTopics: ['Near Miss & Incident Reporting', 'Safe Work Near Live Traffic', 'COSHH & Spillage Procedure', 'Work on MEWP'],
       // New sections — null means not present (not extracted from uploaded file)
       waterMeter: null,   // { heading, monthHeaders:[12 strings], consumption:[12 strings] }
       outdoorAssets: null, // [ { sn, category, plants, qty } ]
@@ -2441,24 +2441,33 @@
       }
     }
 
-    // ===== OSH TOPICS =====
+    // ===== OSH TOPICS (FIXED - not editable) =====
+    const FIXED_OSH_TOPICS = [
+      'Near Miss & Incident Reporting',
+      'Safe Work Near Live Traffic',
+      'COSHH & Spillage Procedure',
+      'Work on MEWP'
+    ];
+
     function renderOshTopics() {
+      // Always enforce fixed topics
+      state.oshTopics = [...FIXED_OSH_TOPICS];
       const container = document.getElementById('oshList');
       container.innerHTML = '';
-      state.oshTopics.forEach((t, i) => {
-        const readonlyAttr = '';
-        const deleteBtn = `<button class="btn btn-danger btn-sm" onclick="state.oshTopics.splice(${i},1);renderOshTopics();debouncedRefresh()">✕</button>`;
+      FIXED_OSH_TOPICS.forEach((t) => {
         const div = document.createElement('div');
         div.className = 'form-row';
         div.style.alignItems = 'center';
         div.innerHTML = `
-      <div class="form-group" style="margin-bottom:0; flex:1;"><input type="text" value="${t}" ${readonlyAttr} onchange="state.oshTopics[${i}]=this.value;debouncedRefresh()"></div>
-      ${deleteBtn}
+      <div class="form-group" style="margin-bottom:0; flex:1;">
+        <input type="text" value="${t}" readonly style="background:rgba(46,160,67,0.06); border-color:rgba(46,160,67,0.25); color:var(--text-secondary); cursor:default;">
+      </div>
+      <span style="font-size:10px; color:var(--accent); padding:0 6px; white-space:nowrap;">🔒 Fixed</span>
     `;
         container.appendChild(div);
       });
     }
-    function addOshTopic() { state.oshTopics.push(''); renderOshTopics(); }
+    function addOshTopic() { /* disabled - topics are fixed */ }
 
     // ===== PHOTO LOCATIONS =====
     function addPhotoLocation() {
@@ -4670,11 +4679,8 @@
         data.contacts = parseContactsFromText(contactsSection);
       }
 
-      // OSH Training
-      const oshSection = extractSection(fullText, /OSH\s*TRAINING/i, /PHOTOGRAPH|SIGNATURE/i);
-      if (oshSection) {
-        data.oshTopics = parseOshFromText(oshSection);
-      }
+      // OSH Training - always use fixed topics, never extract from file
+      // data.oshTopics intentionally not set here so it stays as FIXED_OSH_TOPICS
 
       // Signature
       data.sigName = extractFieldValue(fullText, /(?:Agriculture\s*Engineer|Prepared\s*by|Name)\s*[:\|]?\s*([\s\S]+?)(?=\s*(?:Date|$))/i);
@@ -4976,26 +4982,8 @@
         }
       }
 
-      // ---- OSH TRAINING ----
-      // Try list elements first (Mammoth converts Word bullet lists to <ul>/<li>)
-      const lists = doc.querySelectorAll('ul, ol');
-      for (const list of lists) {
-        const prevText = getPrecedingText(doc, list);
-        if (/OSH|Training|Safety/i.test(prevText)) {
-          const lis = list.querySelectorAll('li');
-          data.oshTopics = Array.from(lis).map(li => li.textContent.trim()).filter(t => t.length > 0);
-          break;
-        }
-      }
-
-      // Fallback: try text extraction for OSH
-      if (!data.oshTopics || data.oshTopics.length === 0) {
-        const oshMatch = allText.match(/OSH\s*TRAINING\s*([\s\S]*?)(?=PHOTOGRAPH|SIGNATURE|$)/i);
-        if (oshMatch) {
-          const items = oshMatch[1].split(/[\n•·\-]/).map(s => s.trim()).filter(s => s.length > 2 && !/^S\/N|Description|Role|Name|Incident/i.test(s));
-          if (items.length > 0) data.oshTopics = items;
-        }
-      }
+      // ---- OSH TRAINING (FIXED - always use predefined topics, never extract from file) ----
+      // data.oshTopics intentionally not set here
 
       // ---- IMAGES (Word only) ----
       const imgs = doc.querySelectorAll('img');
