@@ -2178,6 +2178,9 @@
       waterMeter: null,   // { heading, monthHeaders:[12 strings], consumption:[12 strings] }
       outdoorAssets: null, // [ { sn, category, plants, qty } ]
       indoorAssets: null,  // { locationHeaders:[...], rows:[{ location, values:[...] }] }
+      signatureBlock: null, // { org1, org2, rows:[{label,val1,val2}] } — Wave Tower multi-org sig
+      replacementLog: null, // [ { location, species, qty } ] — Nikki Beach
+      kpiAssessment: null,  // { headers:[...], rows:[[...]], sigRow:{itp,afm,date1,date2} } — Chairman's Villa
     };
     let photoIdCounter = 0;
     let debounceTimer = null;
@@ -2901,8 +2904,36 @@
         photos: document.getElementById('inc-sec-photos').checked,
         signature: document.getElementById('inc-sec-signature').checked,
         waterMeter: state.waterMeter != null && (document.getElementById('inc-sec-watermeter') ? document.getElementById('inc-sec-watermeter').checked : true),
-        assetList: (state.outdoorAssets != null || state.indoorAssets != null) && (document.getElementById('inc-sec-assetlist') ? document.getElementById('inc-sec-assetlist').checked : true)
+        assetList: (state.outdoorAssets != null || state.indoorAssets != null) && (document.getElementById('inc-sec-assetlist') ? document.getElementById('inc-sec-assetlist').checked : true),
+        signatureBlock: state.signatureBlock != null && (document.getElementById('inc-sec-sigblock') ? document.getElementById('inc-sec-sigblock').checked : true),
+        replacementLog: state.replacementLog != null && (document.getElementById('inc-sec-replog') ? document.getElementById('inc-sec-replog').checked : true),
+        kpiAssessment: state.kpiAssessment != null && (document.getElementById('inc-sec-kpi') ? document.getElementById('inc-sec-kpi').checked : true)
       };
+
+      // Replacement Log — read from DOM if section present
+      data.replacementLog = state.replacementLog;
+      if (state.replacementLog && document.getElementById('replogBody')) {
+        data.replacementLog = [];
+        document.querySelectorAll('#replogBody tr').forEach(tr => {
+          const inp = tr.querySelectorAll('input[type="text"]');
+          data.replacementLog.push({ location: inp[0]?.value||'', species: inp[1]?.value||'', qty: inp[2]?.value||'' });
+        });
+      }
+
+      // KPI Assessment — read from state (not DOM-editable for now)
+      data.kpiAssessment = state.kpiAssessment;
+      if (state.kpiAssessment && document.getElementById('kpiBody')) {
+        const rows = [];
+        document.querySelectorAll('#kpiBody tr').forEach(tr => {
+          const inp = tr.querySelectorAll('input[type="text"]');
+          rows.push(Array.from(inp).map(i => i.value));
+        });
+        data.kpiAssessment = { ...state.kpiAssessment, rows };
+      }
+
+      // Signature Block — read from state
+      data.signatureBlock = state.signatureBlock;
+
       return data;
     }
 
@@ -2993,13 +3024,14 @@
         textContent += `</tbody></table>`;
       }
 
-      // PPM
+      // PPM / Operations Performance
       if (data.includes.ops) {
         textContent += `<div class="report-section-heading">${esc(data.opsTitle)}</div>`;
         textContent += `<div style="font-size:8pt;padding:3px 0;border:1px solid #000000;border-top:0;padding-left:4px;background:#ffffff">${esc(data.ppmSubtitle)}</div>`;
         textContent += `<table class="ppm-table"><thead><tr>
       <th>Activity</th><th>Frequency</th><th>Complete (✓)</th><th>Pending (✗)</th><th>Remarks</th>
     </tr></thead><tbody>`;
+        // ppmTasks already contains only the highlighted-month items (synced by syncPpmTable)
         data.ppmTasks.forEach(t => {
           textContent += `<tr><td>${esc(t.name)}</td><td style="text-align:center">${esc(t.freq)}</td>
         <td style="text-align:center;color:#0e6b0e">${t.done ? '✓' : ''}</td>
@@ -3106,6 +3138,45 @@
         }
       }
 
+      // === REPLACEMENT LOG ===
+      if (data.includes.replacementLog && data.replacementLog && data.replacementLog.length > 0) {
+        textContent += `<div style="border:2px solid #1a3a5c;background:#1a3a5c;color:#fff;font-size:9pt;font-weight:bold;padding:4px 8px;margin:8px 0 4px 0;text-align:center">REPLACEMENT LOG</div>`;
+        textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px"><thead><tr>`;
+        textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Location</th>`;
+        textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Plant Species</th>`;
+        textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;width:80px">Quantity</th>`;
+        textContent += `</tr></thead><tbody>`;
+        data.replacementLog.forEach(row => {
+          textContent += `<tr><td style="border:1px solid #000;padding:3px 4px">${esc(row.location)}</td><td style="border:1px solid #000;padding:3px 4px">${esc(row.species)}</td><td style="border:1px solid #000;padding:3px 4px;text-align:center">${esc(row.qty)}</td></tr>`;
+        });
+        textContent += `</tbody></table>`;
+      }
+
+      // === KPI SELF ASSESSMENT ===
+      if (data.includes.kpiAssessment && data.kpiAssessment) {
+        const kpi = data.kpiAssessment;
+        const kpiHeaders = kpi.headers || ['S.No','KPI','MEASURE','TARGET','SELF SCORING','WEIGHTAGE','SUPPORTING DOCUMENTS'];
+        textContent += `<div style="border:2px solid #1a3a5c;background:#1a3a5c;color:#fff;font-size:9pt;font-weight:bold;padding:4px 8px;margin:8px 0 4px 0;text-align:center">KPI – SELF ASSESSMENT</div>`;
+        textContent += `<table style="width:100%;border-collapse:collapse;font-size:7.5pt;margin-bottom:4px"><thead><tr>`;
+        kpiHeaders.forEach(h => { textContent += `<th style="border:1px solid #000;padding:2px 3px;background:#c6d9f1;font-size:7pt">${esc(h)}</th>`; });
+        textContent += `</tr></thead><tbody>`;
+        (kpi.rows || []).forEach(row => {
+          textContent += `<tr>`;
+          row.forEach(cell => { textContent += `<td style="border:1px solid #000;padding:2px 3px;font-size:7pt">${esc(cell)}</td>`; });
+          textContent += `</tr>`;
+        });
+        textContent += `</tbody></table>`;
+        if (kpi.sigRow) {
+          const s = kpi.sigRow;
+          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-top:4px"><tbody>`;
+          textContent += `<tr><td style="border:1px solid #000;padding:3px 6px;background:#f2f2f2;width:50%">ITP Representative: ${esc(s.itp||'')}</td><td style="border:1px solid #000;padding:3px 6px;background:#f2f2f2">AFM Representative: ${esc(s.afm||'')}</td></tr>`;
+          textContent += `<tr><td style="border:1px solid #000;padding:50px 6px;vertical-align:top">Signature &amp; Stamp:</td><td style="border:1px solid #000;padding:50px 6px;vertical-align:top">Signature &amp; Stamp:</td></tr>`;
+          textContent += `<tr><td style="border:1px solid #000;padding:3px 6px">Date: ${esc(s.date1||'')}</td><td style="border:1px solid #000;padding:3px 6px">Date: ${esc(s.date2||'')}</td></tr>`;
+          textContent += `</tbody></table>`;
+        }
+      }
+
+
       let fullHTML = '';
 
       // 1. TEXT BLOCK TABLE
@@ -3116,6 +3187,7 @@
         <tbody><tr><td>
           ${textContent}
           ${(allPhotos.length === 0 || !data.includes.photos) && data.includes.signature ? renderSignature(data) : ''}
+          ${(allPhotos.length === 0 || !data.includes.photos) && data.includes.signatureBlock ? renderSignatureBlock(data) : ''}
         </td></tr></tbody>
         <tfoot><tr><td>${getFooterHTML(1)}</td></tr></tfoot>
       </table>
@@ -3174,9 +3246,10 @@
             }
             photoContent += `</table>`;
 
-            // Add signature on the very last photo page of the last location
-            if (isLastLocation && start + photosPerPage >= loc.photos.length && data.includes.signature) {
-              photoContent += renderSignature(data);
+            // Add signature + signature block on the very last photo page of the last location
+            if (isLastLocation && start + photosPerPage >= loc.photos.length) {
+              if (data.includes.signature) photoContent += renderSignature(data);
+              if (data.includes.signatureBlock) photoContent += renderSignatureBlock(data);
             }
 
             fullHTML += `
@@ -3235,6 +3308,41 @@
     <tr><td class="sig-label">Date</td><td class="sig-value">${data.sigDate ? formatDate(data.sigDate) : ''}</td></tr>
   </table>`;
     }
+
+    function renderSignatureBlock(data) {
+      if (!data.signatureBlock) return '';
+      const sb = data.signatureBlock;
+      // Column widths: label narrow, value wide (equal halves split as 18%+32% each side)
+      const lStyle    = 'border:1px solid #000;padding:4px 6px;font-weight:bold;background:#f2f2f2;white-space:nowrap;width:18%;';
+      const vStyle    = 'border:1px solid #000;padding:4px 8px;width:32%;';
+      const sigLStyle = 'border:1px solid #000;padding:22px 6px;font-weight:bold;background:#f2f2f2;white-space:nowrap;width:18%;';
+      const sigVStyle = 'border:1px solid #000;padding:22px 8px;width:32%;';
+
+      let html = `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-top:8px;table-layout:fixed;">`;
+      // Explicit column widths via colgroup
+      html += `<colgroup><col style="width:18%"><col style="width:32%"><col style="width:18%"><col style="width:32%"></colgroup>`;
+      // Header row: org1 spans 2 cols, org2 spans 2 cols
+      html += `<thead><tr>`;
+      html += `<th colspan="2" style="border:1px solid #000;padding:4px 6px;background:#1a3a5c;color:#fff;text-align:center">${esc(sb.org1)}</th>`;
+      html += `<th colspan="2" style="border:1px solid #000;padding:4px 6px;background:#1a3a5c;color:#fff;text-align:center">${esc(sb.org2)}</th>`;
+      html += `</tr></thead><tbody>`;
+      // Data rows: 4 cells — label1 | val1 | label2 | val2
+      (sb.rows || []).forEach(row => {
+        const isSig  = /^Signature/i.test(row.label);
+        const isDate = /^Date/i.test(row.label);
+        const ls = isSig ? sigLStyle : lStyle;
+        const vs = isSig ? sigVStyle : vStyle;
+        html += `<tr>`;
+        html += `<td style="${ls}">${esc(row.label)}</td>`;
+        html += `<td style="${vs}">${esc(row.val1)}</td>`;
+        html += `<td style="${ls}">${esc(row.label)}</td>`;
+        html += `<td style="${vs}">${isDate ? '' : esc(row.val2)}</td>`;
+        html += `</tr>`;
+      });
+      html += `</tbody></table>`;
+      return html;
+    }
+
 
     function formatDate(dateStr) {
       if (!dateStr) return '';
@@ -3450,7 +3558,7 @@
         textContent += `</tbody></table>` + sectionSpacer;
       }
 
-      // PPM
+      // PPM / Operations Performance (Word export)
       if (data.includes.ops) {
         textContent += `<div class="report-section-heading">${esc(data.opsTitle)}</div>`;
         textContent += `<div style="font-size:8pt;padding:3px 0;border:1px solid #000000;border-top:0;padding-left:4px;background:#ffffff">${esc(data.ppmSubtitle)}</div>`;
@@ -3562,6 +3670,45 @@
         }
       }
 
+      // === REPLACEMENT LOG (Word export) ===
+      if (data.includes.replacementLog && data.replacementLog && data.replacementLog.length > 0) {
+        textContent += `<div style="border:2px solid #1a3a5c;background:#1a3a5c;color:#ffffff;font-size:9pt;font-weight:bold;padding:4px 8px;margin:8px 0 4px 0;text-align:center;font-family:'Segoe UI Variable Small';">REPLACEMENT LOG</div>`;
+        textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-bottom:6px;font-family:'Segoe UI Variable Small';"><thead><tr>`;
+        textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Location</th>`;
+        textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1">Plant Species</th>`;
+        textContent += `<th style="border:1px solid #000;padding:3px 4px;background:#c6d9f1;width:80px">Quantity</th>`;
+        textContent += `</tr></thead><tbody>`;
+        data.replacementLog.forEach(row => {
+          textContent += `<tr><td style="border:1px solid #000;padding:3px 4px">${esc(row.location)}</td><td style="border:1px solid #000;padding:3px 4px">${esc(row.species)}</td><td style="border:1px solid #000;padding:3px 4px;text-align:center">${esc(row.qty)}</td></tr>`;
+        });
+        textContent += `</tbody></table>` + sectionSpacer;
+      }
+
+      // === KPI SELF ASSESSMENT (Word export) ===
+      if (data.includes.kpiAssessment && data.kpiAssessment) {
+        const kpi = data.kpiAssessment;
+        const kpiHeaders = kpi.headers || ['S.No','KPI','MEASURE','TARGET','SELF SCORING','WEIGHTAGE','SUPPORTING DOCUMENTS'];
+        textContent += `<div style="border:2px solid #1a3a5c;background:#1a3a5c;color:#ffffff;font-size:9pt;font-weight:bold;padding:4px 8px;margin:8px 0 4px 0;text-align:center;font-family:'Segoe UI Variable Small';">KPI – SELF ASSESSMENT</div>`;
+        textContent += `<table style="width:100%;border-collapse:collapse;font-size:7pt;margin-bottom:4px;font-family:'Segoe UI Variable Small';"><thead><tr>`;
+        kpiHeaders.forEach(h => { textContent += `<th style="border:1px solid #000;padding:2px 3px;background:#c6d9f1">${esc(h)}</th>`; });
+        textContent += `</tr></thead><tbody>`;
+        (kpi.rows || []).forEach(row => {
+          textContent += `<tr>`;
+          row.forEach(cell => { textContent += `<td style="border:1px solid #000;padding:2px 3px;font-size:7pt">${esc(cell)}</td>`; });
+          textContent += `</tr>`;
+        });
+        textContent += `</tbody></table>`;
+        if (kpi.sigRow) {
+          const s = kpi.sigRow;
+          textContent += `<table style="width:100%;border-collapse:collapse;font-size:8pt;margin-top:4px;font-family:'Segoe UI Variable Small';"><tbody>`;
+          textContent += `<tr><td style="border:1px solid #000;padding:3px 6px;background:#f2f2f2;width:50%">ITP Representative: ${esc(s.itp||'')}</td><td style="border:1px solid #000;padding:3px 6px;background:#f2f2f2">AFM Representative: ${esc(s.afm||'')}</td></tr>`;
+          textContent += `<tr><td style="border:1px solid #000;padding:50px 6px;vertical-align:top">Signature &amp; Stamp:</td><td style="border:1px solid #000;padding:50px 6px;vertical-align:top">Signature &amp; Stamp:</td></tr>`;
+          textContent += `<tr><td style="border:1px solid #000;padding:3px 6px">Date: ${esc(s.date1||'')}</td><td style="border:1px solid #000;padding:3px 6px">Date: ${esc(s.date2||'')}</td></tr>`;
+          textContent += `</tbody></table>` + sectionSpacer;
+        }
+      }
+
+
       let pagesHTML = '';
 
       // 1. FIRST PAGE
@@ -3569,6 +3716,7 @@
     <div class="report-page">
       ${textContent}
       ${(allPhotos.length === 0 || !data.includes.photos) && data.includes.signature ? renderSignature(data) : ''}
+      ${(allPhotos.length === 0 || !data.includes.photos) && data.includes.signatureBlock ? renderSignatureBlock(data) : ''}
     </div>
   `;
 
@@ -3628,9 +3776,10 @@
             }
             photoContent += `</table>`;
 
-            // Add signature on the very last photo page of the last location
-            if (isLastLocation && start + photosPerPage >= loc.photos.length && data.includes.signature) {
-              photoContent += renderSignature(data);
+            // Add signature + signature block on the very last photo page of the last location
+            if (isLastLocation && start + photosPerPage >= loc.photos.length) {
+              if (data.includes.signature) photoContent += renderSignature(data);
+              if (data.includes.signatureBlock) photoContent += renderSignatureBlock(data);
             }
 
             pagesHTML += `
@@ -4339,6 +4488,46 @@
         injectAssetListSection(d.outdoorAssets, d.indoorAssets);
       }
 
+      // ===== SIGNATURE BLOCK (dynamic editor section — Wave Tower style) =====
+      const existingSB = document.getElementById('sec-sigblock');
+      if (existingSB) existingSB.remove();
+      state.signatureBlock = null;
+      if (d.signatureBlock) {
+        state.signatureBlock = d.signatureBlock;
+        injectSignatureBlockSection(d.signatureBlock);
+        // Auto-uncheck the regular signature section when 4-cell block is present
+        const sigChk = document.getElementById('inc-sec-signature');
+        if (sigChk) sigChk.checked = false;
+      }
+
+      // ===== REPLACEMENT LOG (dynamic editor section — Nikki Beach style) =====
+      const existingRL = document.getElementById('sec-replog');
+      if (existingRL) existingRL.remove();
+      state.replacementLog = null;
+      if (d.replacementLog) {
+        state.replacementLog = d.replacementLog;
+        injectReplacementLogSection(d.replacementLog);
+      }
+
+      // ===== KPI SELF ASSESSMENT (dynamic editor section — Chairman's Villa) =====
+      const existingKPI = document.getElementById('sec-kpi');
+      if (existingKPI) existingKPI.remove();
+      state.kpiAssessment = null;
+      if (d.kpiAssessment) {
+        state.kpiAssessment = d.kpiAssessment;
+        injectKpiSection(d.kpiAssessment);
+      }
+
+      // ===== AUTO-HIGHLIGHT MONTH — fixed to September, then sync PPM table =====
+      (function autoHighlightMonth() {
+        const hlChk = document.getElementById('highlight-month-chk');
+        if (hlChk) hlChk.checked = true;
+        const radios = document.querySelectorAll('input[name="hlm"]');
+        radios.forEach(r => { r.checked = (r.value === 'September'); });
+        // Rebuild PPM table from Annual table for September
+        syncPpmTable();
+      })();
+
       closeUploadModal();
       debouncedRefresh();
       showToast('✅ Report data imported successfully!');
@@ -4502,7 +4691,149 @@
       tbody.appendChild(tr);
     }
 
-    // ===== PDF PARSING (PDF.js) =====
+    // ===== INJECT SIGNATURE BLOCK SECTION (Wave Tower style) =====
+    function injectSignatureBlockSection(sb) {
+      const editorBody = document.getElementById('editorBody');
+      const sigSection = document.getElementById('sec-signature');
+      const secEl = document.createElement('div');
+      secEl.className = 'section open';
+      secEl.id = 'sec-sigblock';
+
+      const rowsHTML = sb.rows.map(r => `
+        <tr>
+          <td style="font-size:10px;font-weight:600;background:#f2f2f2;padding:4px 8px;width:120px;">${esc(r.label)}</td>
+          <td style="padding:4px 8px;"><input type="text" value="${esc(r.val1)}" style="width:100%;font-size:10px;" onchange="debouncedRefresh()"></td>
+          <td style="padding:4px 8px;"><input type="text" value="${esc(r.val2)}" style="width:100%;font-size:10px;" onchange="debouncedRefresh()"></td>
+        </tr>`).join('');
+
+      secEl.innerHTML = `
+        <div class="section-header" onclick="toggleSection('sec-sigblock')">
+          <h2><span class="dot"></span>Signature Block</h2>
+          <div class="section-header-right">
+            <label class="section-toggle" onclick="event.stopPropagation()"><input type="checkbox" id="inc-sec-sigblock" checked onchange="debouncedRefresh()"> Include</label>
+            <span class="section-chevron">▼</span>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="table-scroll">
+            <table class="dynamic-table" style="font-size:10px;width:100%;">
+              <thead><tr>
+                <th style="width:120px;"></th>
+                <th>${esc(sb.org1)}</th>
+                <th>${esc(sb.org2)}</th>
+              </tr></thead>
+              <tbody id="sigBlockBody">${rowsHTML}</tbody>
+            </table>
+          </div>
+        </div>`;
+      editorBody.insertBefore(secEl, sigSection);
+    }
+
+    // ===== INJECT REPLACEMENT LOG SECTION (Nikki Beach style) =====
+    function injectReplacementLogSection(log) {
+      const editorBody = document.getElementById('editorBody');
+      const oshSection = document.getElementById('sec-osh');
+      const secEl = document.createElement('div');
+      secEl.className = 'section open';
+      secEl.id = 'sec-replog';
+
+      const rowsHTML = log.map((r, i) => `
+        <tr>
+          <td><input type="text" value="${esc(r.location)}" onchange="debouncedRefresh()"></td>
+          <td><input type="text" value="${esc(r.species)}" onchange="debouncedRefresh()"></td>
+          <td><input type="text" value="${esc(r.qty)}" style="width:70px" onchange="debouncedRefresh()"></td>
+          <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();debouncedRefresh()">✕</button></td>
+        </tr>`).join('');
+
+      secEl.innerHTML = `
+        <div class="section-header" onclick="toggleSection('sec-replog')">
+          <h2><span class="dot"></span>Replacement Log</h2>
+          <div class="section-header-right">
+            <label class="section-toggle" onclick="event.stopPropagation()"><input type="checkbox" id="inc-sec-replog" checked onchange="debouncedRefresh()"> Include</label>
+            <span class="section-chevron">▼</span>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="table-scroll">
+            <table class="dynamic-table" style="font-size:10px;">
+              <thead><tr>
+                <th>Location</th><th>Plant Species</th><th style="width:75px">Quantity</th><th style="width:30px"></th>
+              </tr></thead>
+              <tbody id="replogBody">${rowsHTML}</tbody>
+            </table>
+          </div>
+          <button class="add-row-btn" onclick="addReplacementLogRow()">+ Add Row</button>
+        </div>`;
+      editorBody.insertBefore(secEl, oshSection);
+    }
+
+    function addReplacementLogRow() {
+      const tbody = document.getElementById('replogBody');
+      if (!tbody) return;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><input type="text" value="" onchange="debouncedRefresh()"></td>
+        <td><input type="text" value="" onchange="debouncedRefresh()"></td>
+        <td><input type="text" value="" style="width:70px" onchange="debouncedRefresh()"></td>
+        <td><button class="btn btn-danger btn-sm" onclick="this.closest('tr').remove();debouncedRefresh()">✕</button></td>`;
+      tbody.appendChild(tr);
+    }
+
+    // ===== INJECT KPI SELF ASSESSMENT SECTION (Chairman's Villa style) =====
+    function injectKpiSection(kpi) {
+      const editorBody = document.getElementById('editorBody');
+      const sigSection = document.getElementById('sec-signature');
+      const secEl = document.createElement('div');
+      secEl.className = 'section open';
+      secEl.id = 'sec-kpi';
+
+      const headers = kpi.headers || ['S.No','KPI','MEASURE','TARGET','SELF SCORING','WEIGHTAGE','SUPPORTING DOCUMENTS'];
+      const colHdrs = headers.map(h => `<th style="font-size:9px;padding:3px">${esc(h)}</th>`).join('');
+
+      const rowsHTML = (kpi.rows || []).map(row => {
+        const cells = row.map((v, ci) => `<td><input type="text" value="${esc(v)}" style="width:100%;font-size:9px;min-width:${ci===1||ci===2||ci===6?'100px':'40px'}" onchange="debouncedRefresh()"></td>`).join('');
+        return `<tr>${cells}</tr>`;
+      }).join('');
+
+      const sigRow = kpi.sigRow || {};
+      secEl.innerHTML = `
+        <div class="section-header" onclick="toggleSection('sec-kpi')">
+          <h2><span class="dot"></span>KPI – Self Assessment</h2>
+          <div class="section-header-right">
+            <label class="section-toggle" onclick="event.stopPropagation()"><input type="checkbox" id="inc-sec-kpi" checked onchange="debouncedRefresh()"> Include</label>
+            <span class="section-chevron">▼</span>
+          </div>
+        </div>
+        <div class="section-body">
+          <div class="table-scroll">
+            <table class="dynamic-table" style="font-size:10px;">
+              <thead><tr>${colHdrs}</tr></thead>
+              <tbody id="kpiBody">${rowsHTML}</tbody>
+            </table>
+          </div>
+          <div style="margin-top:8px;">
+            <table class="dynamic-table" style="font-size:10px;width:100%;">
+              <tbody>
+                <tr>
+                  <td style="font-size:10px;font-weight:600;background:#f2f2f2;padding:4px;width:50%">ITP Representative: <input type="text" id="kpiItp" value="${esc(sigRow.itp||'')}" style="font-size:10px;width:60%;border:none;background:transparent" onchange="debouncedRefresh()"></td>
+                  <td style="font-size:10px;font-weight:600;background:#f2f2f2;padding:4px">AFM Representative: <input type="text" id="kpiAfm" value="${esc(sigRow.afm||'')}" style="font-size:10px;width:60%;border:none;background:transparent" onchange="debouncedRefresh()"></td>
+                </tr>
+                <tr>
+                  <td style="padding:50px 6px;vertical-align:top">Signature &amp; Stamp:</td>
+                  <td style="padding:50px 6px;vertical-align:top">Signature &amp; Stamp:</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px">Date: <input type="text" id="kpiDate1" value="${esc(sigRow.date1||'')}" style="font-size:10px;width:80%;border:none;background:transparent" onchange="debouncedRefresh()"></td>
+                  <td style="padding:4px">Date: <input type="text" id="kpiDate2" value="${esc(sigRow.date2||'')}" style="font-size:10px;width:80%;border:none;background:transparent" onchange="debouncedRefresh()"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+      editorBody.insertBefore(secEl, sigSection);
+    }
+
+
     async function parsePDFFile(file) {
       // Dynamically load PDF.js if not already loaded
       if (!window.pdfjsLib) {
@@ -5175,7 +5506,134 @@
         }
       })();
 
+      // ---- REPLACEMENT LOG ---- (Nikki Beach: table heading "REPLACEMENT LOG", cols: Location | Plant Species | Quantity)
+      (function extractReplacementLog() {
+        for (const table of tables) {
+          const ctx = tableContext.get(table) || '';
+          const headers = getTableHeaders(table);
+          const firstRowText = table.querySelector('tr') ? table.querySelector('tr').textContent.trim() : '';
+
+          const isRepLog = /REPLACEMENT\s*LOG/i.test(ctx) ||
+                           /REPLACEMENT\s*LOG/i.test(firstRowText) ||
+                           (headers.some(h => /Location/i.test(h)) && headers.some(h => /Plant\s*Species?/i.test(h)) && headers.some(h => /Qty|Quantity/i.test(h)));
+          if (isRepLog) {
+            const allRows = Array.from(table.querySelectorAll('tr'));
+            const dataRows = allRows.filter(tr => {
+              const text = tr.textContent.trim();
+              return !/^REPLACEMENT\s*LOG/i.test(text) && !/^Location.*Plant.*Qty/i.test(text) && text.length > 0;
+            });
+            const log = [];
+            dataRows.forEach(tr => {
+              const tds = Array.from(tr.querySelectorAll('td'));
+              if (tds.length >= 2) {
+                const location = tds[0]?.textContent.trim() || '';
+                const species  = tds[1]?.textContent.trim() || '';
+                const qty      = tds.length >= 3 ? (tds[2]?.textContent.trim() || '') : '';
+                if (location && !/^Location/i.test(location) && !/^Plant/i.test(location)) {
+                  log.push({ location, species, qty });
+                }
+              }
+            });
+            if (log.length > 0) { data.replacementLog = log; break; }
+          }
+        }
+      })();
+
+      // ---- SIGNATURE BLOCK ---- (Wave Tower: 2-org table with Approved By / Designation / Signature / Date)
+      (function extractSignatureBlock() {
+        for (const table of tables) {
+          const allRows = Array.from(table.querySelectorAll('tr'));
+          if (allRows.length < 2) continue;
+          const firstRowCells = Array.from(allRows[0].querySelectorAll('td,th'));
+          if (firstRowCells.length < 2) continue;
+          // First row must have exactly 2 cells (the org name headers, each spanning 2 columns)
+          const org1 = firstRowCells[0]?.textContent.trim() || '';
+          const org2 = firstRowCells[1]?.textContent.trim() || '';
+          // Skip if org names are empty or look like role headers (Role/Name/Phone/Email)
+          if (!org1 || !org2) continue;
+          if (/^Role$|^Name$|^Phone$|^Email$|^S\/N$|^Activity$/i.test(org1)) continue;
+          // Must have Approved By / Designation / Signature / Date in body
+          const bodyText = table.textContent;
+          if (!/Approved\s*By|Designation|Signature/i.test(bodyText)) continue;
+          // Must have both org names of decent length
+          if (org1.length < 3 || org2.length < 3) continue;
+
+          const rows = [];
+          for (let ri = 1; ri < allRows.length; ri++) {
+            const cells = Array.from(allRows[ri].querySelectorAll('td,th'));
+            if (cells.length >= 2) {
+              // Wave Tower: 4 cells per row — label(0), val1(1), label2(2), val2(3)
+              // We use col 0 as label, col 1 as val1 (org1 side), col 3 (or last) as val2 (org2 side)
+              const label = cells[0]?.textContent.trim() || '';
+              const val1  = cells[1]?.textContent.trim() || '';
+              const val2  = cells.length >= 4 ? (cells[3]?.textContent.trim() || '') : (cells.length >= 3 ? cells[2]?.textContent.trim() || '' : '');
+              if (label) rows.push({ label, val1, val2 });
+            }
+          }
+          if (rows.length > 0) {
+            data.signatureBlock = { org1, org2, rows };
+            break;
+          }
+        }
+      })();
+
+      // ---- KPI SELF ASSESSMENT ---- (Chairman's Villa: 7-col KPI table + signature row)
+      (function extractKpi() {
+        for (const table of tables) {
+          const ctx = tableContext.get(table) || '';
+          const headers = getTableHeaders(table);
+          const firstRowText = table.querySelector('tr') ? table.querySelector('tr').textContent.trim() : '';
+
+          const isKpi = /KPI.*SELF\s*ASSESS|SELF\s*ASSESS.*KPI/i.test(ctx) ||
+                        /KPI.*SELF\s*ASSESS|SELF\s*ASSESS.*KPI/i.test(firstRowText) ||
+                        (headers.some(h => /KPI/i.test(h)) && headers.some(h => /MEASURE/i.test(h)) && headers.some(h => /TARGET/i.test(h)));
+          if (isKpi) {
+            const kpiHeaders = headers.length >= 5 ? headers : ['S.No','KPI','MEASURE','TARGET','SELF SCORING','WEIGHTAGE','SUPPORTING DOCUMENTS'];
+            const kpiRows = [];
+            const dataRows = getDataRows(table);
+            dataRows.forEach(tr => {
+              const tds = Array.from(tr.querySelectorAll('td'));
+              if (tds.length >= 3) {
+                kpiRows.push(tds.map(td => td.textContent.trim()));
+              }
+            });
+
+            // Look for KPI signature row (ITP Representative / AFM Representative) in next sibling table
+            let sigRow = { itp: '', afm: '', date1: '', date2: '' };
+            const allElements = Array.from(table.parentElement?.children || []);
+            const tableIdx = allElements.indexOf(table);
+            for (let ni = tableIdx + 1; ni < Math.min(tableIdx + 5, allElements.length); ni++) {
+              const nextEl = allElements[ni];
+              if (nextEl.tagName === 'TABLE') {
+                const sigText = nextEl.textContent;
+                if (/ITP\s*Representative|AFM\s*Representative/i.test(sigText)) {
+                  const rows = Array.from(nextEl.querySelectorAll('tr'));
+                  if (rows.length >= 1) {
+                    const cells0 = Array.from(rows[0].querySelectorAll('td,th'));
+                    const itp = cells0[0]?.textContent.replace(/ITP\s*Representative\s*:/i, '').trim() || '';
+                    const afm = cells0[1]?.textContent.replace(/AFM\s*Representative\s*:/i, '').trim() || '';
+                    sigRow.itp = itp; sigRow.afm = afm;
+                  }
+                  if (rows.length >= 3) {
+                    const cells2 = Array.from(rows[2].querySelectorAll('td,th'));
+                    sigRow.date1 = cells2[0]?.textContent.replace(/Date\s*:/i, '').trim() || '';
+                    sigRow.date2 = cells2[1]?.textContent.replace(/Date\s*:/i, '').trim() || '';
+                  }
+                  break;
+                }
+              }
+            }
+
+            if (kpiRows.length > 0) {
+              data.kpiAssessment = { headers: kpiHeaders, rows: kpiRows, sigRow };
+              break;
+            }
+          }
+        }
+      })();
+
       // ---- ALWAYS FALLBACK per-field using raw text ----
+
       if (rawText) {
         const textData = extractSectionsFromText(rawText);
         Object.keys(textData).forEach(key => {
