@@ -2931,8 +2931,31 @@
         data.kpiAssessment = { ...state.kpiAssessment, rows };
       }
 
-      // Signature Block — read from state
-      data.signatureBlock = state.signatureBlock;
+      // Signature Block — read from DOM to allow manual edits
+      if (state.signatureBlock) {
+        const sigBody = document.getElementById('sigBlockBody');
+        if (sigBody) {
+          const rows = [];
+          sigBody.querySelectorAll('tr').forEach(tr => {
+            const inputs = tr.querySelectorAll('input[type="text"]');
+            const label = tr.querySelector('td').textContent.trim();
+            if (inputs.length >= 2) {
+              rows.push({
+                label: label,
+                val1: inputs[0].value,
+                val2: inputs[1].value
+              });
+            }
+          });
+          data.signatureBlock = {
+            org1: state.signatureBlock.org1,
+            org2: state.signatureBlock.org2,
+            rows: rows
+          };
+        } else {
+          data.signatureBlock = state.signatureBlock;
+        }
+      }
 
       return data;
     }
@@ -4366,18 +4389,13 @@
       if (d.location) document.getElementById('location').value = d.location;
       if (d.contractNo) document.getElementById('contractNo').value = d.contractNo;
       if (d.serviceProvided) document.getElementById('serviceProvided').value = d.serviceProvided;
-      // User requested: If we upload a report to extract do not change this value.
-      /*
-      if (d.reportMonth) {
-        const sel = document.getElementById('reportMonth');
-        for (let i = 0; i < sel.options.length; i++) {
-          if (sel.options[i].value.toLowerCase() === d.reportMonth.toLowerCase() ||
-            sel.options[i].text.toLowerCase() === d.reportMonth.toLowerCase()) {
-            sel.selectedIndex = i; break;
-          }
+      // User requested: make September as fixed
+      const sel = document.getElementById('reportMonth');
+      for (let i = 0; i < sel.options.length; i++) {
+        if (sel.options[i].value.toLowerCase() === 'september' || sel.options[i].text.toLowerCase() === 'september') {
+          sel.selectedIndex = i; break;
         }
       }
-      */
       // User requested to make the year fixed to 2026 and not updated from extract
       // if (d.reportYear) document.getElementById('reportYear').value = d.reportYear;
 
@@ -5565,8 +5583,15 @@
               // Wave Tower: 4 cells per row — label(0), val1(1), label2(2), val2(3)
               // We use col 0 as label, col 1 as val1 (org1 side), col 3 (or last) as val2 (org2 side)
               const label = cells[0]?.textContent.trim() || '';
-              const val1  = cells[1]?.textContent.trim() || '';
-              const val2  = cells.length >= 4 ? (cells[3]?.textContent.trim() || '') : (cells.length >= 3 ? cells[2]?.textContent.trim() || '' : '');
+              let val1  = cells[1]?.textContent.trim() || '';
+              let val2  = cells.length >= 4 ? (cells[3]?.textContent.trim() || '') : (cells.length >= 3 ? cells[2]?.textContent.trim() || '' : '');
+              
+              // Do not extract signature or date values (leave blank for manual entry)
+              if (/^Signature/i.test(label) || /^Date/i.test(label)) {
+                val1 = '';
+                val2 = '';
+              }
+              
               if (label) rows.push({ label, val1, val2 });
             }
           }
